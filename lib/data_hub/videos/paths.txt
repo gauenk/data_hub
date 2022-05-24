@@ -1,0 +1,38 @@
+{
+    "iphone": {
+        "root": "/home/gauenk/data/iphone2022/images/",
+        "itype": "rgb",
+        "cat": "vid"
+    },
+
+    "set8": {
+        "root": "/home/gauenk/data/set8/images/",
+        "itype": "rgb",
+        "cat": "vid"
+    },
+
+    "sid": {
+        "root": "/srv/disk3tb/home/gauenk/data/sid/images/",
+        "itype": "raw",
+        "cat": "vid"
+    },
+
+    "sid_clean": {
+        "root": "/srv/disk3tb/home/gauenk/data/sid/clean/",
+        "itype": "raw",
+        "cat": "frame"
+    },
+
+    "toy64": {
+        "root": "/home/gauenk/Documents/packages/eccv2020/data/toy_saccades_64/images/",
+        "itype": "rgb",
+        "cat": "vid"
+    },
+
+    "toy": {
+        "root": "/home/gauenk/Documents/packages/eccv2020/data/toy_saccades/images/",
+        "itype": "rgb",
+        "cat": "vid"
+    }
+
+}
