@@ -3,6 +3,7 @@ import json,rawpy
 import numpy as np
 from PIL import Image
 from pathlib import Path
+from einops import rearrange
 from easydict import EasyDict as edict
 
 def optional(pydict,key,default):
@@ -45,7 +46,7 @@ def read_rgb_video(path,nframes,fmt):
         path_t = path / ("%05d.png" % t)
         if not path_t.exists(): break
         vid_t = Image.open(str(path_t)).convert("RGB")
-        vid_t = np.array(vid_t)*1.
+        vid_t = (np.array(vid_t)*1.).astype(np.float32)
         vid_t = rearrange(vid_t,'h w c -> c h w')
         vid.append(vid_t)
     vid = np.stack(vid)
@@ -62,7 +63,7 @@ def get_video_cfg(vid_set,vid_name,nframes=None,frame_fmt=None):
 def read_frame(path,itype):
     if itype == "rgb":
         img = Image.open(str(path)).convert("RGB")
-        img = np.array(img)*1.
+        img = (np.array(img)*1.).astype(np.float32)
         img = rearrange(img,'h w c -> c h w')
         return img
     elif itype == "raw":

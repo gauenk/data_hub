@@ -7,7 +7,7 @@ from easydict import EasyDict as edict
 from torchvision import transforms as tvT
 
 # -- project imports --
-from .noise import AddGaussianNoiseSetN2N,GaussianBlur,AddGaussianNoise,AddPoissonNoiseBW,AddLowLightNoiseBW,AddHeteroGaussianNoise,ScaleZeroMean
+from .impl import AddGaussianNoiseSetN2N,GaussianBlur,AddGaussianNoise,AddPoissonNoiseBW,AddLowLightNoiseBW,AddHeteroGaussianNoise,ScaleZeroMean
 
 __all__ = ['get_noise_transform']
 
@@ -108,7 +108,7 @@ def get_msg_noise(params):
 #
 # --------------------------------
 
-def create_noise_info_from_cfg(cfg):
+def noise_from_cfg(cfg):
     ns = edict()
     ns.sigma = cfg.sigma
     ns.ntype = 'g'

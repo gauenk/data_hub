@@ -103,3 +103,9 @@ class RandomOnce():
             set_random_state(self.current)
 
 
+# class RandomCrop():
+#     def __init__(self,size):
+#         self.size = size
+
+#     def __call__(self,imgs):
+#         h,w = imgs.shape[-2:]

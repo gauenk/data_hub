@@ -243,8 +243,6 @@ class GaussianBlur:
 
         return kernel
 
-
-
 class BlockGaussian:
 
     def __init__(self,N,mean=0.,std=1e-1, mean_size=.4):
@@ -272,3 +270,14 @@ class BlockGaussian:
             pic_n[y1:y2, x1:x2] = mask
             pics.append(pic_n)
         return pics
+
+
+
+
+class ScaleZeroMean:
+
+    def __init__(self):
+        pass
+
+    def __call__(self,pic):
+        return pic - 0.5

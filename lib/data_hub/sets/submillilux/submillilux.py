@@ -1,5 +1,5 @@
 """
-Toy64 dataset
+Submillilux dataset
 
 """
 
@@ -12,10 +12,11 @@ from easydict import EasyDict as edict
 
 # -- pytorch imports --
 import torch as th
+from torchvision.transforms import RandomCrop
 import torchvision.transforms.functional as tvF
 
 # -- project imports --
-from data_hub.common import get_loaders,optional
+from data_hub.common import get_loaders,optional,get_isize
 from data_hub.transforms import get_noise_transform,noise_from_cfg
 from data_hub.reproduce import RandomOnce,get_random_state,enumerate_indices
 
@@ -23,21 +24,23 @@ from data_hub.reproduce import RandomOnce,get_random_state,enumerate_indices
 from .paths import IMAGE_PATH,IMAGE_SETS
 from .reader import read_files,read_video
 
-class Toy64():
+class Submillilux():
 
-    def __init__(self,iroot,sroot,split,noise_info,nsamples=0):
+    def __init__(self,iroot,sroot,split,noise_info,nsamples=0,nframes=0,isize=None):
 
         # -- set init params --
         self.iroot = iroot
         self.sroot = sroot
         self.split = split
-        self.nframes = None
+        self.nframes = nframes
+        self.isize = isize
+        self.rand_crop = None if isize is None else RandomCrop(isize)
 
         # -- create transforms --
         self.noise_trans = get_noise_transform(noise_info,noise_only=True)
 
         # -- load paths --
-        self.paths = read_files(iroot,sroot,split)
+        self.paths = read_files(iroot,sroot,split,nframes)
         self.groups = sorted(list(self.paths['images'].keys()))
 
         # -- limit num of samples --
@@ -46,7 +49,7 @@ class Toy64():
 
         # -- repro --
         self.noise_once = optional(noise_info,"sim_once",False)
-        self.fixRandNoise_1 = RandomOnce(self.noise_once,self.nsamples)
+        # self.fixRandNoise_1 = RandomOnce(self.noise_once,self.nsamples)
 
     def __len__(self):
         return self.nsamples
@@ -61,7 +64,7 @@ class Toy64():
         """
 
         # -- get random state --
-        rng_state = get_random_state()
+        rng_state = None#get_random_state()
 
         # -- indices --
         image_index = self.indices[index]
@@ -72,9 +75,13 @@ class Toy64():
         clean = read_video(vid_files)
         clean = th.from_numpy(clean)
 
+        # -- limit frame --
+        if not(self.rand_crop is None):
+            clean = self.rand_crop(clean)
+
         # -- get noise --
-        with self.fixRandNoise_1.set_state(index):
-            noisy = self.noise_trans(clean)
+        # with self.fixRandNoise_1.set_state(index):
+        noisy = self.noise_trans(clean)
 
         # -- manage flow and output --
         index_th = th.IntTensor([image_index])
@@ -86,8 +93,9 @@ class Toy64():
 # Loading the datasets in a project
 #
 
-def get_toy64_dataset(cfg):
+def get_submillilux_dataset(cfg):
     return load(cfg)
+
 
 def load(cfg):
 
@@ -98,11 +106,26 @@ def load(cfg):
     # -- noise and dyanmics --
     noise_info = noise_from_cfg(cfg)
 
+    # -- set-up --
+    modes = ['tr','val','te']
+
+    # -- frames --
+    def_nframes = optional(cfg,"nframes",0)
+    nframes = edict()
+    for mode in modes:
+        nframes[mode] = optional(cfg,"%s_nframes"%mode,def_nframes)
+
+    # -- frame sizes --
+    def_isize = optional(cfg,"isize",None)
+    isizes = edict()
+    for mode in modes:
+        isizes[mode] = get_isize(optional(cfg,"%s_isize"%mode,def_isize))
+
     # -- samples --
-    nsamples = optional(cfg,"nsamples",0)
-    tr_nsamples = optional(cfg,"tr_nsamples",nsamples)
-    val_nsamples = optional(cfg,"val_nsamples",nsamples)
-    te_nsamples = optional(cfg,"te_nsamples",nsamples)
+    def_nsamples = optional(cfg,"nsamples",-1)
+    nsamples = edict()
+    for mode in modes:
+        nsamples[mode] = optional(cfg,"%s_nsamples"%mode,def_nsamples)
 
     # -- setup paths --
     iroot = IMAGE_PATH
@@ -110,14 +133,16 @@ def load(cfg):
 
     # -- create objcs --
     data = edict()
-    data.tr = Toy64(iroot,sroot,"train",noise_info,tr_nsamples)
-    data.val = Toy64(iroot,sroot,"val",noise_info,val_nsamples)
-    data.te = Toy64(iroot,sroot,"test",noise_info,te_nsamples)
+    data.tr = Submillilux(iroot,sroot,"train",noise_info,
+                          nsamples.tr,nframes.tr,isizes.tr)
+    data.val = Submillilux(iroot,sroot,"val",noise_info,
+                           nsamples.val,nframes.val,isizes.val)
+    data.te = Submillilux(iroot,sroot,"test",noise_info,
+                          nsamples.te,nframes.te,isizes.te)
 
     # -- create loader --
     batch_size = optional(cfg,'batch_size',1)
     loader = get_loaders(cfg,data,batch_size)
 
     return data,loader
-
 
