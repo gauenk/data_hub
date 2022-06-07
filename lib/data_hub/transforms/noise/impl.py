@@ -15,6 +15,23 @@ import torchvision.utils as tvUtils
 # -- project imports --
 from pyutils.timer import Timer
 
+class QIS:
+
+    def __init__(self,alpha,read_noise,nbits,seed=None):
+        self.alpha = alpha
+        self.read_noise = read_noise
+        self.seed = seed
+        self.nbits = nbits
+
+    def __call__(self,image):
+	pix_max = 2**self.nbits-1
+	frame = np.random.poisson(self.alpha*image)
+        frame += self.read_noise*np.random.randn(*image.shape)
+	frame = np.round(frame)
+	frame = np.clip(frame, 0, pix_max)
+	noisy = frame.astype(np.float32) / self.alpha
+	return noisy
+
 class LowLight:
 
     def __init__(self,alpha,seed=None):
