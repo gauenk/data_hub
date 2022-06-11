@@ -7,7 +7,8 @@ from easydict import EasyDict as edict
 from torchvision import transforms as tvT
 
 # -- project imports --
-from .impl import AddGaussianNoiseSetN2N,GaussianBlur,AddGaussianNoise,AddPoissonNoiseBW,AddLowLightNoiseBW,AddHeteroGaussianNoise,ScaleZeroMean
+from data_hub.common import optional
+from .impl import AddGaussianNoiseSetN2N,GaussianBlur,AddGaussianNoise,AddPoissonNoiseBW,AddLowLightNoiseBW,AddHeteroGaussianNoise,ScaleZeroMean,QIS
 
 __all__ = ['get_noise_transform']
 
@@ -87,10 +88,12 @@ def get_pn_noise(params):
     return pn_noise
 
 def get_qis_noise(params):
+    # alpha,readout = params['alpha'],params['readout']
+    # nbits,use_adc = params['nbits'],params['use_adc']
     alpha,readout = params['alpha'],params['readout']
-    nbits,use_adc = params['nbits'],params['use_adc']
-    if readout > 1: readout /= 255. # rescale is necessary
-    qis_noise = AddLowLightNoiseBW(alpha,readout,nbits,use_adc)
+    nbits = params['nbits']
+    qis_noise = QIS(alpha,read_noise,nbits)
+    # qis_noise = AddLowLightNoiseBW(alpha,readout,nbits,use_adc)
     return qis_noise
 
 def get_msg_noise(params):
@@ -111,7 +114,22 @@ def get_msg_noise(params):
 def noise_from_cfg(cfg):
     ns = edict()
     ns.sigma = cfg.sigma
-    ns.ntype = 'g'
+    ntype = optional(cfg,'ntype','g')
+    ns.ntype = ntype
+    # -- additional fields --
+    if ntype == "g":
+        fields = ["sigma"]
+    elif ntype == "pn":
+        fields = ["alpha"]
+    elif ntype == "qis":
+        fields = QIS.fields
+    else:
+        raise ValueError(f"Uknown noisy type [{ntype}] for fields")
+
+    # -- assignment --
+    for field in fields:
+        ns[field] = cfg[field]
+
     return ns
 
 def get_noise_config(name):
@@ -119,6 +137,8 @@ def get_noise_config(name):
         config = get_gaussian_config_from_name(name)
     elif name.split("-")[0] == "pn":
         config = get_poisson_config_from_name(name)
+    elif name.split("-")[0] == "qis":
+        config = get_qis_config_from_name(name)
     else:
         raise ValueError(f"Uknown noise config [{name}]")
     return config
@@ -140,6 +160,19 @@ def get_poisson_config_from_name(name):
     ns['ntype'] = noise_type
     ns['alpha'] = rate_level
     ns['sigma'] = std_level
+    ns['name'] = name
+    return ns
+
+def get_qis_config_from_name(name):
+    noise_type,rate_str,read_str,nbits_str = name.split("-")
+    rate = float(rate_str.replace('p','.'))
+    read_noise = float(read_str.replace('p','.'))
+    nbits = int(nbits_str)
+    ns = edict()
+    ns['ntype'] = noise_type
+    ns['alpha'] = rate
+    ns['read_noise'] = read_noise
+    ns['nbits'] = nbits
     ns['name'] = name
     return ns
 
