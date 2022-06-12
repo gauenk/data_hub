@@ -26,11 +26,11 @@ def read_video(paths):
     vid = np.stack(vid).astype(np.float32)
     return vid
 
-def get_video_paths(vid_dir):
+def get_video_paths(vid_dir,ext="png"):
     paths = []
-    MAXF = 85
+    MAXF = 100
     for t in range(MAXF):
-        vid_t = vid_dir / ("%05d.png" % t)
+        vid_t = vid_dir / ("%05d.%s" % (t,ext))
         if not vid_t.exists(): break
         paths.append(vid_t)
     return paths
@@ -41,7 +41,7 @@ def get_vid_names(vid_fn):
     names = [name.strip() for name in names]
     return names
 
-def read_files(iroot,sroot,ds_split,nframes):
+def read_files(iroot,sroot,ds_split,nframes,ext="png"):
 
     # -- get vid names in set --
     split_fn = sroot / ("%s.txt" % ds_split)
@@ -51,18 +51,19 @@ def read_files(iroot,sroot,ds_split,nframes):
     files = {'images':{}}
     for vid_name in vid_names:
         vid_dir = iroot/vid_name
-        vid_paths = get_video_paths(vid_dir)
+        vid_paths = get_video_paths(vid_dir,ext)
         total_nframes = len(vid_paths)
 
         # -- pick number of sub frames --
-        if nframes > 0:
-            n_subvids = max(total_nframes - nframes,1)
-        else:
-            n_subvids = 1
+        nframes_vid = nframes
+        if nframes_vid <= 0:
+              nframes_vid = total_nframes
+        n_subvids = max(total_nframes - nframes_vid,1)
 
+        # -- pack each frame group --
         for start_t in range(n_subvids):
             vid_id = "%s_%d" % (vid_name,start_t)
-            end_t = start_t + nframes
+            end_t = start_t + nframes_vid
             paths_t = [vid_paths[t] for t in range(start_t,end_t)]
             files['images'][vid_name] = paths_t
 

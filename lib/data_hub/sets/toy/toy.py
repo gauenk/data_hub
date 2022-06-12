@@ -83,7 +83,7 @@ class Toy():
         # with self.fixRandNoise_1.set_state(index):
         noisy = self.noise_trans(clean)
 
-        # -- manage flow and output --
+        # -- elems to tensors --
         index_th = th.IntTensor([image_index])
 
         return {'noisy':noisy,'clean':clean,'index':index_th,
@@ -113,19 +113,19 @@ def load(cfg):
     def_nframes = optional(cfg,"nframes",0)
     nframes = edict()
     for mode in modes:
-        nframes[mode] = optional(cfg,"%s_nframes"%mode,def_nframes)
+        nframes[mode] = optional(cfg,"nframes_%s"%mode,def_nframes)
 
     # -- frame sizes --
     def_isize = optional(cfg,"isize",None)
     isizes = edict()
     for mode in modes:
-        isizes[mode] = get_isize(optional(cfg,"%s_isize"%mode,def_isize))
+        isizes[mode] = get_isize(optional(cfg,"isize_%s"%mode,def_isize))
 
     # -- samples --
     def_nsamples = optional(cfg,"nsamples",-1)
     nsamples = edict()
     for mode in modes:
-        nsamples[mode] = optional(cfg,"%s_nsamples"%mode,def_nsamples)
+        nsamples[mode] = optional(cfg,"nsamples_%s"%mode,def_nsamples)
 
     # -- setup paths --
     iroot = IMAGE_PATH

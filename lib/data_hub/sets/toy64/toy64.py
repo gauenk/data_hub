@@ -80,7 +80,7 @@ class Toy64():
         index_th = th.IntTensor([image_index])
 
         return {'noisy':noisy,'clean':clean,'index':index_th,
-                'rng_state':rng_state}
+                'rng_state':rng_state,'group':group}
 
 #
 # Loading the datasets in a project
