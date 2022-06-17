@@ -34,6 +34,8 @@ class Set8():
         self.split = split
         self.nframes = nframes
         self.isize = isize
+
+        # -- manage cropping --
         self.rand_crop = None if isize is None else RandomCrop(isize)
 
         # -- create transforms --
@@ -117,6 +119,7 @@ def load(cfg):
 
     # -- frame sizes --
     def_isize = optional(cfg,"isize",None)
+    if def_isize == "-1_-1": def_size = None
     isizes = edict()
     for mode in modes:
         isizes[mode] = get_isize(optional(cfg,"isize_%s"%mode,def_isize))

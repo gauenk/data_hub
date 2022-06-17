@@ -1,5 +1,5 @@
 """
-Toy dataset
+DIV2K dataset
 
 """
 
@@ -24,15 +24,14 @@ from data_hub.reproduce import RandomOnce,get_random_state,enumerate_indices
 from .paths import IMAGE_PATH,IMAGE_SETS
 from .reader import read_files,read_video
 
-class Toy():
+class DIV2k():
 
-    def __init__(self,iroot,sroot,split,noise_info,nsamples=0,nframes=0,isize=None):
+    def __init__(self,iroot,sroot,split,noise_info,nsamples=0,isize=None):
 
         # -- set init params --
         self.iroot = iroot
         self.sroot = sroot
         self.split = split
-        self.nframes = nframes
         self.isize = isize
         self.rand_crop = None if isize is None else RandomCrop(isize)
 
@@ -40,7 +39,7 @@ class Toy():
         self.noise_trans = get_noise_transform(noise_info,noise_only=True)
 
         # -- load paths --
-        self.paths = read_files(iroot,sroot,split,nframes)
+        self.paths = read_files(iroot,sroot,split)
         self.groups = sorted(list(self.paths['images'].keys()))
 
         # -- limit num of samples --
@@ -93,7 +92,7 @@ class Toy():
 # Loading the datasets in a project
 #
 
-def get_toy_dataset(cfg):
+def get_div2k_dataset(cfg):
     return load(cfg)
 
 def load(cfg):
@@ -107,12 +106,6 @@ def load(cfg):
 
     # -- set-up --
     modes = ['tr','val','te']
-
-    # -- frames --
-    def_nframes = optional(cfg,"nframes",0)
-    nframes = edict()
-    for mode in modes:
-        nframes[mode] = optional(cfg,"nframes_%s"%mode,def_nframes)
 
     # -- frame sizes --
     def_isize = optional(cfg,"isize",None)
@@ -132,9 +125,9 @@ def load(cfg):
 
     # -- create objcs --
     data = edict()
-    data.tr = Toy(iroot,sroot,"train",noise_info,nsamples.tr,nframes.tr,isizes.tr)
-    data.val = Toy(iroot,sroot,"val",noise_info,nsamples.val,nframes.val,isizes.val)
-    data.te = Toy(iroot,sroot,"test",noise_info,nsamples.te,nframes.te,isizes.te)
+    data.tr = DIV2k(iroot,sroot,"train",noise_info,nsamples.tr,isizes.tr)
+    data.val = DIV2k(iroot,sroot,"val",noise_info,nsamples.val,isizes.val)
+    data.te = DIV2k(iroot,sroot,"test",noise_info,nsamples.te,isizes.te)
 
     # -- create loader --
     batch_size = optional(cfg,'batch_size',1)

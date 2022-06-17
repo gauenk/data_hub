@@ -13,7 +13,7 @@ import torchvision.transforms.functional as tvF
 import torchvision.utils as tvUtils
 
 # -- project imports --
-from pyutils.timer import Timer
+# from pyutils.timer import Timer
 
 class QIS:
 
@@ -60,7 +60,7 @@ class AddHeteroGaussianNoise():
 class AddGaussianNoise(object):
     def __init__(self, mean=0., std=1e-2):
         self.mean = mean
-        self.std = std / 255.
+        self.std = std# / 255.
         # self.counter = 0
         # print("Creating a new gaussian noise.")
 
