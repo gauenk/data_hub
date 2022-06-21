@@ -14,6 +14,7 @@ from easydict import EasyDict as edict
 import torch as th
 from torchvision.transforms import RandomCrop
 import torchvision.transforms.functional as tvF
+from torchvision.transforms.functional import center_crop
 
 # -- project imports --
 from data_hub.common import get_loaders,optional,get_isize
@@ -26,7 +27,8 @@ from .reader import read_files,read_video
 
 class Set8():
 
-    def __init__(self,iroot,sroot,split,noise_info,nsamples=0,nframes=0,isize=None):
+    def __init__(self,iroot,sroot,split,noise_info,
+                 nsamples=0,nframes=0,fskip=1,isize=None):
 
         # -- set init params --
         self.iroot = iroot
@@ -37,12 +39,13 @@ class Set8():
 
         # -- manage cropping --
         self.rand_crop = None if isize is None else RandomCrop(isize)
+        self.crop = isize
 
         # -- create transforms --
         self.noise_trans = get_noise_transform(noise_info,noise_only=True)
 
         # -- load paths --
-        self.paths = read_files(iroot,sroot,split,nframes)
+        self.paths = read_files(iroot,sroot,split,nframes,fskip)
         self.groups = sorted(list(self.paths['images'].keys()))
 
         # -- limit num of samples --
@@ -77,9 +80,13 @@ class Set8():
         clean = read_video(vid_files)
         clean = th.from_numpy(clean)
 
+        # -- meta info --
+        frame_nums = self.paths['fnums'][group]
+
         # -- limit frame --
         if not(self.rand_crop is None):
-            clean = self.rand_crop(clean)
+            clean = center_crop(clean,self.isize)
+            # clean = self.rand_crop(clean)
 
         # -- get noise --
         # with self.fixRandNoise_1.set_state(index):
@@ -89,7 +96,7 @@ class Set8():
         index_th = th.IntTensor([image_index])
 
         return {'noisy':noisy,'clean':clean,'index':index_th,
-                'rng_state':rng_state}
+                'fnums':frame_nums,'rng_state':rng_state}
 
 #
 # Loading the datasets in a project
@@ -117,6 +124,12 @@ def load(cfg):
     for mode in modes:
         nframes[mode] = optional(cfg,"nframes_%s"%mode,def_nframes)
 
+    # -- fskip [amount of overlap for subbursts] --
+    def_fskip = optional(cfg,"fskip",1)
+    fskip = edict()
+    for mode in modes:
+        fskip[mode] = optional(cfg,"%s_fskip"%mode,def_fskip)
+
     # -- frame sizes --
     def_isize = optional(cfg,"isize",None)
     if def_isize == "-1_-1": def_size = None
@@ -136,9 +149,12 @@ def load(cfg):
 
     # -- create objcs --
     data = edict()
-    data.tr = Set8(iroot,sroot,"train",noise_info,nsamples.tr,nframes.tr,isizes.tr)
-    data.val = Set8(iroot,sroot,"val",noise_info,nsamples.val,nframes.val,isizes.val)
-    data.te = Set8(iroot,sroot,"test",noise_info,nsamples.te,nframes.te,isizes.te)
+    data.tr = Set8(iroot,sroot,"train",noise_info,nsamples.tr,
+                   nframes.tr,fskip.tr,isizes.tr)
+    data.val = Set8(iroot,sroot,"val",noise_info,nsamples.val,
+                    nframes.val,fskip.val,isizes.val)
+    data.te = Set8(iroot,sroot,"test",noise_info,nsamples.te,
+                   nframes.te,fskip.te,isizes.te)
 
     # -- create loader --
     batch_size = optional(cfg,'batch_size',1)

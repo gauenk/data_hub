@@ -27,13 +27,14 @@ def read_video(paths):
     return vid
 
 def get_video_paths(vid_dir,ext="png"):
-    paths = []
-    MAXF = 100
+    MAXF = 10000
+    paths,frame_nums = [],[]
     for t in range(MAXF):
         vid_t = vid_dir / ("%05d.%s" % (t,ext))
         if not vid_t.exists(): break
         paths.append(vid_t)
-    return paths
+        frame_nums.append(t)
+    return paths,frame_nums
 
 def get_vid_names(vid_fn):
     with open(vid_fn,"r") as f:
@@ -41,30 +42,44 @@ def get_vid_names(vid_fn):
     names = [name.strip() for name in names]
     return names
 
-def read_files(iroot,sroot,ds_split,nframes,ext="png"):
+def read_files(iroot,sroot,ds_split,nframes,fskip,ext="png"):
 
     # -- get vid names in set --
     split_fn = sroot / ("%s.txt" % ds_split)
     vid_names = get_vid_names(split_fn)
 
     # -- get files --
-    files = {'images':{}}
+    files = {'images':{},"fnums":{}}
     for vid_name in vid_names:
         vid_dir = iroot/vid_name
-        vid_paths = get_video_paths(vid_dir,ext)
+        vid_paths,frame_nums = get_video_paths(vid_dir,ext)
         total_nframes = len(vid_paths)
+        assert total_nframes > 0
 
         # -- pick number of sub frames --
         nframes_vid = nframes
         if nframes_vid <= 0:
               nframes_vid = total_nframes
-        n_subvids = max(total_nframes - nframes_vid,1)
 
-        # -- pack each frame group --
-        for start_t in range(n_subvids):
-            vid_id = "%s_%d" % (vid_name,start_t)
+        # -- compute num subframes --
+        n_subvids = max((total_nframes-1)//fskip+1,1)
+
+        # -- reflect bound --
+        def bnd(num,lim):
+            if num >= lim: return 2*(lim-1)-num
+            else: return num
+
+        for group in range(n_subvids):
+            start_t = group * fskip
+            if n_subvids == 1: vid_id = vid_name
+            else: vid_id = "%s_%d" % (vid_name,start_t)
             end_t = start_t + nframes_vid
-            paths_t = [vid_paths[t] for t in range(start_t,end_t)]
-            files['images'][vid_name] = paths_t
+            paths_t = [vid_paths[bnd(t,total_nframes)] for t in range(start_t,end_t)]
+            files['images'][vid_id] = paths_t
+
+            # -- extra --
+            fnums_t = [frame_nums[bnd(t,total_nframes)] for t in range(start_t,end_t)]
+            files['fnums'][vid_id] = fnums_t
+
 
     return files

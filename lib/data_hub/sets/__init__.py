@@ -13,12 +13,16 @@ from . import submillilux
 from . import bsd68
 from . import div2k
 
+# -- misc --
 from data_hub.common import optional
 
 def load(cfg):
     dname = optional(cfg,"dname","toy64")
     set_loaders = {"toy64":toy64,"toy":toy,"iphone":iphone,
-                   "set8":set8,"sid":sid,"submillilux":submillilux,
+                   "set8":set8,"sid":sid,
+                   "submillilux":submillilux,
+                   "submillilux_real":submillilux.real,
+                   "submillilux_paired":submillilux.paired,
                    "bsd68":bsd68,"div2k":div2k}
     dnames = list(set_loaders.keys())
     if not(dname in dnames):

@@ -12,37 +12,39 @@ from easydict import EasyDict as edict
 
 # -- pytorch imports --
 import torch as th
-from torchvision.transforms import RandomCrop
 import torchvision.transforms.functional as tvF
+from torchvision.transforms.functional import center_crop
 
 # -- project imports --
 from data_hub.common import get_loaders,optional,get_isize
-from data_hub.transforms import get_noise_transform,noise_from_cfg
+# from data_hub.transforms import get_noise_transform,noise_from_cfg
 from data_hub.reproduce import RandomOnce,get_random_state,enumerate_indices
 
 # -- local imports --
 from .paths import IMAGE_PATH_REAL as IMAGE_PATH
 from .paths import IMAGE_SETS_REAL as IMAGE_SETS
-from .reader import read_files,read_video
+from .reader import read_files,read_mats
 
 class SubmilliluxReal():
 
-    def __init__(self,iroot,sroot,split,noise_info,nsamples=0,nframes=0,isize=None):
+    def __init__(self,iroot,sroot,split,noise_info,
+                 nsamples=0,nframes=0,fskip=1,isize=None):
 
         # -- set init params --
         self.iroot = iroot
         self.sroot = sroot
         self.split = split
         self.nframes = nframes
+        self.fskip = fskip
         self.isize = isize
-        self.rand_crop = None if isize is None else RandomCrop(isize)
+        self.crop = None if isize is None else isize
 
         # -- create transforms --
-        self.noise_trans = get_noise_transform(noise_info,noise_only=True)
+        self.noise_trans = None#get_noise_transform(noise_info,noise_only=True)
 
         # -- load paths --
-        self.paths = read_files(iroot,sroot,split,nframes)
-        self.groups = sorted(list(self.paths['images'].keys()))
+        self.paths = read_files(iroot,sroot,split,nframes,fskip,"mat")
+        self.groups = list(self.paths['images'].keys())
 
         # -- limit num of samples --
         self.indices = enumerate_indices(len(self.paths['images']),nsamples)
@@ -73,21 +75,21 @@ class SubmilliluxReal():
 
         # -- load burst --
         vid_files = self.paths['images'][group]
-        clean = read_video(vid_files)
-        clean = th.from_numpy(clean)
+        noisy = read_mats(vid_files)
+        noisy = th.from_numpy(noisy)
+
+        # -- meta info --
+        frame_nums = self.paths['fnums'][group]
 
         # -- limit frame --
-        if not(self.rand_crop is None):
-            clean = self.rand_crop(clean)
-
-        # -- get noise --
-        # with self.fixRandNoise_1.set_state(index):
-        noisy = self.noise_trans(clean)
+        if not(self.crop is None):
+            noisy = center_crop(noisy,self.crop)
 
         # -- manage flow and output --
         index_th = th.IntTensor([image_index])
 
-        return {'noisy':noisy,'clean':clean,'index':index_th,
+        return {'noisy':noisy,'index':index_th,
+                'fnums':frame_nums,
                 'rng_state':rng_state}
 
 #
@@ -107,7 +109,8 @@ def load(cfg):
     #
 
     # -- noise and dyanmics --
-    noise_info = noise_from_cfg(cfg)
+    # noise_info = noise_from_cfg(cfg)
+    noise_info = None
 
     # -- set-up --
     modes = ['tr','val','te']
@@ -117,6 +120,12 @@ def load(cfg):
     nframes = edict()
     for mode in modes:
         nframes[mode] = optional(cfg,"%s_nframes"%mode,def_nframes)
+
+    # -- fskip [amount of overlap for subbursts] --
+    def_fskip = optional(cfg,"fskip",1)
+    fskip = edict()
+    for mode in modes:
+        fskip[mode] = optional(cfg,"%s_fskip"%mode,def_fskip)
 
     # -- frame sizes --
     def_isize = optional(cfg,"isize",None)
@@ -137,11 +146,11 @@ def load(cfg):
     # -- create objcs --
     data = edict()
     data.tr = SubmilliluxReal(iroot,sroot,"train",noise_info,
-                          nsamples.tr,nframes.tr,isizes.tr)
+                              nsamples.tr,nframes.tr,fskip.tr,isizes.tr)
     data.val = SubmilliluxReal(iroot,sroot,"val",noise_info,
-                           nsamples.val,nframes.val,isizes.val)
+                               nsamples.val,nframes.val,fskip.val,isizes.val)
     data.te = SubmilliluxReal(iroot,sroot,"test",noise_info,
-                          nsamples.te,nframes.te,isizes.te)
+                              nsamples.te,nframes.te,fskip.te,isizes.te)
 
     # -- create loader --
     batch_size = optional(cfg,'batch_size',1)

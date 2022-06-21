@@ -26,13 +26,15 @@ from .reader import read_files,read_video
 
 class Submillilux():
 
-    def __init__(self,iroot,sroot,split,noise_info,nsamples=0,nframes=0,isize=None):
+    def __init__(self,iroot,sroot,split,noise_info,nsamples=0,
+                 nframes=0,fskip=1,isize=None):
 
         # -- set init params --
         self.iroot = iroot
         self.sroot = sroot
         self.split = split
         self.nframes = nframes
+        self.fskip = fskip
         self.isize = isize
         self.rand_crop = None if isize is None else RandomCrop(isize)
 
@@ -40,7 +42,7 @@ class Submillilux():
         self.noise_trans = get_noise_transform(noise_info,noise_only=True)
 
         # -- load paths --
-        self.paths = read_files(iroot,sroot,split,nframes)
+        self.paths = read_files(iroot,sroot,split,nframes,fskip)
         self.groups = sorted(list(self.paths['images'].keys()))
 
         # -- limit num of samples --
@@ -115,6 +117,12 @@ def load(cfg):
     for mode in modes:
         nframes[mode] = optional(cfg,"%s_nframes"%mode,def_nframes)
 
+    # -- fskip [amount of overlap for subbursts] --
+    def_nframes = optional(cfg,"fskip",1)
+    nframes = edict()
+    for mode in modes:
+        nframes[mode] = optional(cfg,"%s_fskip"%mode,def_nframes)
+
     # -- frame sizes --
     def_isize = optional(cfg,"isize",None)
     isizes = edict()
@@ -134,11 +142,11 @@ def load(cfg):
     # -- create objcs --
     data = edict()
     data.tr = Submillilux(iroot,sroot,"train",noise_info,
-                          nsamples.tr,nframes.tr,isizes.tr)
+                          nsamples.tr,nframes.tr,fskip.tr,isizes.tr)
     data.val = Submillilux(iroot,sroot,"val",noise_info,
-                           nsamples.val,nframes.val,isizes.val)
+                           nsamples.val,nframes.fskip.val,val,isizes.val)
     data.te = Submillilux(iroot,sroot,"test",noise_info,
-                          nsamples.te,nframes.te,isizes.te)
+                          nsamples.te,nframes.te,fskip.te,isizes.te)
 
     # -- create loader --
     batch_size = optional(cfg,'batch_size',1)
