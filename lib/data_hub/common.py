@@ -39,12 +39,15 @@ def get_loaders(cfg,data,batch_size):
     kwargs['num_workers'] = optional(cfg,'num_workers',2)
 
     # -- train and val --
-    loader.tr = DataLoader(data.tr,**kwargs)
-    loader.val = DataLoader(data.val,**kwargs)
+    if ("tr" in data) and not(data.tr is None):
+        loader.tr = DataLoader(data.tr,**kwargs)
+    if ("val" in data) and not(data.val is None):
+        loader.val = DataLoader(data.val,**kwargs)
 
     # -- test --
     kwargs['batch_size'] = 1
-    loader.te = DataLoader(data.te,**kwargs)
+    if ("te" in data) and not(data.te is None):
+        loader.te = DataLoader(data.te,**kwargs)
 
     return loader
 
@@ -52,7 +55,7 @@ def get_isize(isize):
     """
     Convert 96_96 -> [96,96]
     """
-    if not(isize is None):
+    if not(isize is None) and (isize != "none"):
         isize = [int(x) for x in isize.split("_")]
     return isize
 

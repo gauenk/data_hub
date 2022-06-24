@@ -5,6 +5,7 @@ from . import toy
 from . import iphone
 from . import set8
 from . import sid
+from . import sidd
 
 # -- real: (noisy_1,...,noisy_N,clean_frame) sets --
 from . import submillilux
@@ -23,7 +24,11 @@ def load(cfg):
                    "submillilux":submillilux,
                    "submillilux_real":submillilux.real,
                    "submillilux_paired":submillilux.paired,
-                   "bsd68":bsd68,"div2k":div2k}
+                   "bsd68":bsd68,"div2k":div2k,
+                   "sidd":sidd.rgb_val,
+                   "sidd_raw":sidd.raw_val,
+                   "sidd_rgb":sidd.rgb_val,
+                   "sidd_rgb_bench":sidd.rgb_bench}
     dnames = list(set_loaders.keys())
     if not(dname in dnames):
         print("Options: ",dnames)
