@@ -4,10 +4,14 @@ import numpy as np
 from contextlib import contextmanager
 from easydict import EasyDict as edict
 
-def enumerate_indices(total_samples,selected_samples):
+def enumerate_indices(total_samples,selected_samples,rand_sel=True,skip=1):
     if selected_samples > 0:
-        indices = torch.randperm(total_samples)
-        indices = indices[:selected_samples]
+        if rand_sel == True:
+            indices = torch.randperm(total_samples)
+            indices = indices[:selected_samples]
+        else:
+            indices = torch.arange(total_samples)[::skip]
+            indices = indices[:selected_samples]
     else:
         indices = torch.arange(total_samples)
     return indices

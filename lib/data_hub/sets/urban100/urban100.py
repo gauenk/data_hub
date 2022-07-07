@@ -1,5 +1,5 @@
 """
-Set8 dataset
+URBAN100 dataset
 
 """
 
@@ -14,7 +14,6 @@ from easydict import EasyDict as edict
 import torch as th
 from torchvision.transforms import RandomCrop
 import torchvision.transforms.functional as tvF
-from torchvision.transforms.functional import center_crop
 
 # -- project imports --
 from data_hub.common import get_loaders,optional,get_isize
@@ -25,28 +24,23 @@ from data_hub.reproduce import RandomOnce,get_random_state,enumerate_indices
 from .paths import IMAGE_PATH,IMAGE_SETS
 from .reader import read_files,read_video
 
-class Set8():
+class URBAN100():
 
-    def __init__(self,iroot,sroot,split,noise_info,
-                 nsamples=0,nframes=0,fskip=1,isize=None,bw=False):
+    def __init__(self,iroot,sroot,split,noise_info,use_bw=False,nsamples=0,isize=None):
 
         # -- set init params --
         self.iroot = iroot
         self.sroot = sroot
         self.split = split
-        self.nframes = nframes
         self.isize = isize
-        self.bw = bw
-
-        # -- manage cropping --
+        self.use_bw = use_bw
         self.rand_crop = None if isize is None else RandomCrop(isize)
-        self.crop = isize
 
         # -- create transforms --
         self.noise_trans = get_noise_transform(noise_info,noise_only=True)
 
         # -- load paths --
-        self.paths = read_files(iroot,sroot,split,nframes,fskip)
+        self.paths = read_files(iroot,sroot,split)
         self.groups = sorted(list(self.paths['images'].keys()))
 
         # -- limit num of samples --
@@ -78,34 +72,29 @@ class Set8():
 
         # -- load burst --
         vid_files = self.paths['images'][group]
-        clean = read_video(vid_files,self.bw)
+        clean = read_video(vid_files,self.use_bw)
         clean = th.from_numpy(clean)
-
-        # -- meta info --
-        frame_nums = self.paths['fnums'][group]
 
         # -- limit frame --
         if not(self.rand_crop is None):
-            clean = center_crop(clean,self.isize)
-            # clean = self.rand_crop(clean)
+            clean = self.rand_crop(clean)
 
         # -- get noise --
         # with self.fixRandNoise_1.set_state(index):
         noisy = self.noise_trans(clean)
 
-        # -- manage flow and output --
+        # -- elems to tensors --
         index_th = th.IntTensor([image_index])
 
         return {'noisy':noisy,'clean':clean,'index':index_th,
-                'fnums':frame_nums,'rng_state':rng_state}
+                'rng_state':rng_state}
 
 #
 # Loading the datasets in a project
 #
 
-def get_set8_dataset(cfg):
+def get_urban100_dataset(cfg):
     return load(cfg)
-
 
 def load(cfg):
 
@@ -119,27 +108,11 @@ def load(cfg):
     # -- set-up --
     modes = ['tr','val','te']
 
-    # -- bw --
-    def_bw = optional(cfg,"bw",False)
-    bw = edict()
-    for mode in modes:
-        bw[mode] = optional(cfg,"bw_%s"%mode,def_bw)
-
-    # -- frames --
-    def_nframes = optional(cfg,"nframes",0)
-    nframes = edict()
-    for mode in modes:
-        nframes[mode] = optional(cfg,"nframes_%s"%mode,def_nframes)
-
-    # -- fskip [amount of overlap for subbursts] --
-    def_fskip = optional(cfg,"fskip",1)
-    fskip = edict()
-    for mode in modes:
-        fskip[mode] = optional(cfg,"%s_fskip"%mode,def_fskip)
+    # -- color or bw --
+    use_bw = optional(cfg,"bw",False)
 
     # -- frame sizes --
     def_isize = optional(cfg,"isize",None)
-    if def_isize == "-1_-1": def_size = None
     isizes = edict()
     for mode in modes:
         isizes[mode] = get_isize(optional(cfg,"isize_%s"%mode,def_isize))
@@ -156,12 +129,9 @@ def load(cfg):
 
     # -- create objcs --
     data = edict()
-    data.tr = Set8(iroot,sroot,"train",noise_info,nsamples.tr,
-                   nframes.tr,fskip.tr,isizes.tr,bw.tr)
-    data.val = Set8(iroot,sroot,"val",noise_info,nsamples.val,
-                    nframes.val,fskip.val,isizes.val,bw.val)
-    data.te = Set8(iroot,sroot,"test",noise_info,nsamples.te,
-                   nframes.te,fskip.te,isizes.te,bw.te)
+    data.tr = URBAN100(iroot,sroot,"train",noise_info,use_bw,nsamples.tr,isizes.tr)
+    data.val = URBAN100(iroot,sroot,"val",noise_info,use_bw,nsamples.val,isizes.val)
+    data.te = URBAN100(iroot,sroot,"test",noise_info,use_bw,nsamples.te,isizes.te)
 
     # -- create loader --
     batch_size = optional(cfg,'batch_size',1)

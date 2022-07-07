@@ -6,6 +6,7 @@ from . import iphone
 from . import set8
 from . import sid
 from . import sidd
+from . import davis
 
 # -- real: (noisy_1,...,noisy_N,clean_frame) sets --
 from . import submillilux
@@ -13,6 +14,8 @@ from . import submillilux
 # -- single: (noisy_frame,clean_frame) sets --
 from . import bsd68
 from . import div2k
+from . import urban100
+from . import set12
 
 # -- misc --
 from data_hub.common import optional
@@ -24,11 +27,15 @@ def load(cfg):
                    "submillilux":submillilux,
                    "submillilux_real":submillilux.real,
                    "submillilux_paired":submillilux.paired,
-                   "bsd68":bsd68,"div2k":div2k,
+                   "bsd68":bsd68,
+                   "urban100":urban100,
+                   "set12":set12,
+                   "div2k":div2k,
                    "sidd":sidd.rgb_val,
                    "sidd_raw":sidd.raw_val,
                    "sidd_rgb":sidd.rgb_val,
-                   "sidd_rgb_bench":sidd.rgb_bench}
+                   "sidd_rgb_bench":sidd.rgb_bench,
+                   "davis":davis}
     dnames = list(set_loaders.keys())
     if not(dname in dnames):
         print("Options: ",dnames)
