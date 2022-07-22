@@ -44,7 +44,14 @@ def get_vid_names(vid_fn):
     names = [name.strip() for name in names]
     return names
 
-def read_files(iroot,sroot,ds_split,nframes,fskip,ext="png"):
+def read_files(iroot,sroot,ds_split,nframes,stride,ext="png"):
+
+    # -- get vid names in set --
+    split_fn = sroot / ("%s.txt" % ds_split)
+    vid_names = get_vid_names(split_fn)
+
+    # -- not input yet --
+    dil = 1
 
     # -- get vid names in set --
     split_fn = sroot / ("%s.txt" % ds_split)
@@ -64,7 +71,7 @@ def read_files(iroot,sroot,ds_split,nframes,fskip,ext="png"):
               nframes_vid = total_nframes
 
         # -- compute num subframes --
-        n_subvids = max((total_nframes-1)//fskip+1,1)
+        n_subvids = (total_nframes - (nframes_vid-1)*dil - 1)//stride + 1
 
         # -- reflect bound --
         def bnd(num,lim):
@@ -72,7 +79,7 @@ def read_files(iroot,sroot,ds_split,nframes,fskip,ext="png"):
             else: return num
 
         for group in range(n_subvids):
-            start_t = group * fskip
+            start_t = group * stride
             if n_subvids == 1: vid_id = vid_name
             else: vid_id = "%s_%d" % (vid_name,start_t)
             end_t = start_t + nframes_vid
@@ -82,6 +89,5 @@ def read_files(iroot,sroot,ds_split,nframes,fskip,ext="png"):
             # -- extra --
             fnums_t = [frame_nums[bnd(t,total_nframes)] for t in range(start_t,end_t)]
             files['fnums'][vid_id] = fnums_t
-
 
     return files

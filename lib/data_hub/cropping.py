@@ -83,6 +83,8 @@ def sample_sobel_point(sobel_vid):
     t,c,h,w = sobel_vid.shape
     sobel_vid = th.mean(sobel_vid,1)
     hw = h * w
+    size = t * h * w
+    # ind = int(th.multinomial(size,1).item())
     ind = int(th.multinomial(sobel_vid.ravel(),1).item())
     ti = ind // hw
     hi = (ind%hw)//h
@@ -93,6 +95,7 @@ def sample_sobel_point(sobel_vid):
 def sample_rand_point(sobel_vid):
     t,c,h,w = sobel_vid.shape
     hw = h * w
+    size = t * h * w
     ind = int(th.multinomial(size,1).item())
     ti = ind // hw
     hi = (ind%hw)//h
@@ -128,4 +131,19 @@ def sample_rand_region(sobel_vid):
     region = point_to_region(point,reg_temp,nframes,height,width)
     return region
 
+def get_center_region(vshape,region_temp):
+    t,c,h,w = vshape
+    rt,rh,rw = region_temp.split("_")
+    rt,rh,rw = int(rt),int(rh),int(rw)
 
+    ts = t//2 - rt//2
+    hs = h//2 - rh//2
+    ws = w//2 - rw//2
+
+    te = ts + rt
+    he = hs + rh
+    we = ws + rw
+
+    region = [ts,te,hs,ws,he,we]
+
+    return region

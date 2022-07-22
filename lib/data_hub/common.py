@@ -37,6 +37,7 @@ def get_loaders(cfg,data,batch_size):
     kwargs['batch_size'] = batch_size
     kwargs['collate_fn'] = collate_dict
     kwargs['num_workers'] = optional(cfg,'num_workers',2)
+    kwargs['persistent_workers'] = optional(cfg,'persistent_workers',False)
 
     # -- train and val --
     if ("tr" in data) and not(data.tr is None):

@@ -29,7 +29,7 @@ from .reader import read_files,read_video
 class DAVIS():
 
     def __init__(self,iroot,sroot,split,noise_info,
-                 nsamples=0,nframes=0,fskip=1,isize=None,
+                 nsamples=0,nframes=0,fstride=1,isize=None,
                  bw=False,cropmode="coords",rand_order=False,
                  index_skip=1):
 
@@ -44,10 +44,11 @@ class DAVIS():
         self.index_skip = index_skip
 
         # -- manage cropping --
+        isize_is_none = isize is None or isize == "none"
         self.crop = isize
-        self.cropmode = cropmode if not(isize is None) else "none"
+        self.cropmode = cropmode if not(isize_is_none) else "none"
         self.rand_crop,self.region_temp = None,None
-        if not(isize is None):
+        if not(isize_is_none):
             self.rand_crop = RandomCrop(isize)
             self.region_temp = "%d_%d_%d" % (nframes,isize[0],isize[1])
 
@@ -55,7 +56,7 @@ class DAVIS():
         self.noise_trans = get_noise_transform(noise_info,noise_only=True)
 
         # -- load paths --
-        self.paths = read_files(iroot,sroot,split,nframes,fskip,ext="jpg")
+        self.paths = read_files(iroot,sroot,split,nframes,fstride,ext="jpg")
         self.groups = sorted(list(self.paths['images'].keys()))
 
         # -- limit num of samples --
@@ -84,6 +85,9 @@ class DAVIS():
             region = sample_rand_region(sobel_vid,self.region_temp)
             region = th.IntTensor(region)
             rtn = region
+        elif self.cropmode in ["center_crop","center"]:
+            vid_cc = center_crop(vid,self.isize)
+            rtn = vid_cc
         else:
             raise NotImplementedError(f"Uknown crop mode [{self.cropmode}]")
         return rtn
@@ -160,11 +164,11 @@ def load(cfg):
     for mode in modes:
         nframes[mode] = optional(cfg,"nframes_%s"%mode,def_nframes)
 
-    # -- fskip [amount of overlap for subbursts] --
-    def_fskip = optional(cfg,"fskip",1)
-    fskip = edict()
+    # -- fstride [amount of overlap for subbursts] --
+    def_fstride = optional(cfg,"fstride",1)
+    fstride = edict()
     for mode in modes:
-        fskip[mode] = optional(cfg,"%s_fskip"%mode,def_fskip)
+        fstride[mode] = optional(cfg,"%s_fstride"%mode,def_fstride)
 
     # -- frame sizes --
     def_isize = optional(cfg,"isize",None)
@@ -204,10 +208,10 @@ def load(cfg):
     # -- create objcs --
     data = edict()
     data.tr = DAVIS(iroot,sroot,"train",noise_info,nsamples.tr,
-                    nframes.tr,fskip.tr,isizes.tr,bw.tr,cropmode.tr,
+                    nframes.tr,fstride.tr,isizes.tr,bw.tr,cropmode.tr,
                     rand_order.tr,index_skip.tr)
     data.val = DAVIS(iroot,sroot,"val",noise_info,nsamples.val,
-                     nframes.val,fskip.val,isizes.val,bw.val,cropmode.tr,
+                     nframes.val,fstride.val,isizes.val,bw.val,cropmode.tr,
                      rand_order.val,index_skip.val)
 
     # -- create loader --
