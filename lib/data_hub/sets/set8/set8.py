@@ -204,6 +204,12 @@ def load(cfg):
     for mode in modes:
         index_skip[mode] = optional(cfg,"index_skip_%s"%mode,def_index_skip)
 
+    # -- batch size --
+    def_batch_size = optional(cfg,'batch_size',1)
+    batch_size = edict()
+    for mode in modes:
+        batch_size[mode] = optional(cfg,'batch_size_%s'%mode,def_batch_size)
+
     # -- setup paths --
     iroot = IMAGE_PATH
     sroot = IMAGE_SETS
@@ -221,7 +227,6 @@ def load(cfg):
                    rand_order.te,index_skip.te)
 
     # -- create loader --
-    batch_size = optional(cfg,'batch_size',1)
     loader = get_loaders(cfg,data,batch_size)
 
     return data,loader

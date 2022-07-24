@@ -215,7 +215,10 @@ def load(cfg):
                      rand_order.val,index_skip.val)
 
     # -- create loader --
-    batch_size = optional(cfg,'batch_size',1)
+    def_batch_size = optional(cfg,'batch_size',1)
+    batch_size = edict()
+    for mode in modes:
+        batch_size[mode] = optional(cfg,'batch_size_%s'%mode,def_batch_size)
     loader = get_loaders(cfg,data,batch_size)
 
     return data,loader

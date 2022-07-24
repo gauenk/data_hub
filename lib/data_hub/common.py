@@ -34,20 +34,21 @@ def get_loaders(cfg,data,batch_size):
 
     # -- args --
     kwargs = edict()
-    kwargs['batch_size'] = batch_size
     kwargs['collate_fn'] = collate_dict
     kwargs['num_workers'] = optional(cfg,'num_workers',2)
     kwargs['persistent_workers'] = optional(cfg,'persistent_workers',False)
 
     # -- train and val --
     if ("tr" in data) and not(data.tr is None):
+        kwargs['batch_size'] = batch_size.tr
         loader.tr = DataLoader(data.tr,**kwargs)
     if ("val" in data) and not(data.val is None):
+        kwargs['batch_size'] = batch_size.val
         loader.val = DataLoader(data.val,**kwargs)
 
     # -- test --
-    kwargs['batch_size'] = 1
     if ("te" in data) and not(data.te is None):
+        kwargs['batch_size'] = batch_size.te
         loader.te = DataLoader(data.te,**kwargs)
 
     return loader
