@@ -126,7 +126,7 @@ def point2range(p,reg,lb,ub):
     # -- shift left if needed --
     curr_reg = pmax - pmin # current size
     lshift = reg - curr_reg # remaining
-    pmin -= lshift
+    pmin = max(pmin - lshift,0)
 
     # -- assign --
     pstart = pmin
@@ -135,7 +135,7 @@ def point2range(p,reg,lb,ub):
     # -- assert --
     info = "%d,%d,%d,%d,%d" % (pstart,lb,pend,ub,reg)
     assert (pstart >= lb) and (pend <= ub),info
-    assert (pend - pstart) == reg,info
+    assert (pend - pstart) <= reg,info
     return pstart,pend
 
 def rslice(vid,region):
@@ -152,6 +152,9 @@ def sample_sobel_point(sobel_vid):
     ti = ind // hw
     hi = (ind%hw)//h
     wi = (ind%hw)%w
+    assert ti < t
+    assert hi < h
+    assert wi < w
     point = [ti,hi,wi]
     return point
 
@@ -163,6 +166,9 @@ def sample_rand_point(sobel_vid):
     ti = ind // hw
     hi = (ind%hw)//h
     wi = (ind%hw)%w
+    assert ti < t
+    assert hi < h
+    assert wi < w
     point = [ti,hi,wi]
     return point
 
