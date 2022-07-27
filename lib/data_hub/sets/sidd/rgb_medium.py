@@ -1,10 +1,10 @@
 """
-Submillilux dataset
+Training data from SIDD
 
 """
 
 # -- python imports --
-import pdb
+import pdb,hdf5storage
 import numpy as np
 from pathlib import Path
 from einops import rearrange,repeat
@@ -23,11 +23,15 @@ from data_hub.reproduce import RandomOnce,get_random_state,enumerate_indices
 from data_hub.cropping import crop_vid
 from data_hub.opt_parsing import parse_cfg
 
+# -- image --
+from PIL import Image
+
 # -- local imports --
 from .paths import IMAGE_ROOT
-# from .reader import read_files,read_mats
+from .reader import read_medium_files,read_file_pair
+from .rgb_val import SIDDRgbVal
 
-class SIDDRgbVal():
+class SIDDMediumSrgb():
 
     def __init__(self,iroot,nsamples=0,nframes=0,fskip=1,isize=None,
                  cropmode="coords",rand_order=False,index_skip=1):
@@ -38,6 +42,9 @@ class SIDDRgbVal():
         self.nframes = nframes
         self.fskip = fskip
         self.isize = isize
+        self.crop = None if ((isize is None) or (isize == "none")) else isize
+        self.rand_order = rand_order
+        self.mode = "rgb"
 
         # -- manage cropping --
         isize_is_none = isize is None or isize == "none"
@@ -48,18 +55,14 @@ class SIDDRgbVal():
             self.region_temp = "%d_%d_%d" % (nframes,isize[0],isize[1])
 
         # -- load paths --
-        self.noisy_fn = iroot / "ValidationNoisyBlocksSrgb.mat"
-        self.clean_fn = iroot / "ValidationGtBlocksSrgb.mat"
-        self.noisy = scipy.io.loadmat(self.noisy_fn)['ValidationNoisyBlocksSrgb']
-        self.clean = scipy.io.loadmat(self.clean_fn)['ValidationGtBlocksSrgb']
-        self.groups = np.array(["%02d" % x for x in range(len(self.noisy))])
-        self.blocks = None # an api requirement, see "...full.py" for comparison
+        droot = iroot / "SIDD_Medium_Srgb/Data"
+        self.files,self.groups = read_medium_files(droot,self.mode)
+        self.blocks = None
 
         # -- limit num of samples --
-        self.indices = enumerate_indices(len(self.noisy),nsamples,
+        self.indices = enumerate_indices(len(self.files),nsamples,
                                          rand_order,index_skip)
         self.nsamples = len(self.indices)
-
 
     def __len__(self):
         return self.nsamples
@@ -77,23 +80,10 @@ class SIDDRgbVal():
         rng_state = None#get_random_state()
 
         # -- get image index --
-        image_index = index
+        image_index = self.indices[index]
 
         # -- get image chunks --
-        noisy = self.noisy[index]
-        clean = self.clean[index]
-
-        # -- reshape --
-        noisy = rearrange(noisy,'g h w c -> g c h w')
-        clean = rearrange(clean,'g h w c -> g c h w')
-
-        # -- type --
-        noisy = noisy.astype(np.float32)
-        clean = clean.astype(np.float32)
-
-        # -- to torch --
-        noisy = th.from_numpy(noisy).contiguous()
-        clean = th.from_numpy(clean).contiguous()
+        noisy,clean = read_file_pair(self.files[image_index],self.mode)
 
         # -- meta info --
         frame_nums = th.IntTensor(np.arange(noisy.shape[0]))
@@ -110,8 +100,8 @@ class SIDDRgbVal():
         # -- manage flow and output --
         index_th = th.IntTensor([image_index])
 
-        return {'noisy':noisy,'clean':clean,"region":region,
-                'index':index_th,'fnums':frame_nums,'rng_state':rng_state}
+        return {'noisy':noisy,'clean':noisy,'index':index_th,
+                'fnums':frame_nums,'region':region,'rng_state':rng_state}
 
 #
 # Loading the datasets in a project
@@ -120,7 +110,7 @@ class SIDDRgbVal():
 def get_sidd_dataset(cfg):
     return load(cfg)
 
-def load_val(cfg):
+def load_bench(cfg):
     return load(cfg)
 
 def load(cfg):
@@ -129,10 +119,8 @@ def load(cfg):
     # -- extract --
     #
 
-    # -- set-up --
-    modes = ['val']
-
     # -- field names and defaults --
+    modes = ['tr',"val"]
     fields = {"batch_size":1,
               "nsamples":-1,
               "isize":None,
@@ -147,6 +135,8 @@ def load(cfg):
 
     # -- create objcs --
     data = edict()
+    data.tr = SIDDMediumSrgb(IMAGE_ROOT,p.nsamples.tr,p.nframes.tr,p.fskip.tr,
+                             p.isize.tr,p.cropmode.tr,p.rand_order.tr,p.index_skip.tr)
     data.val = SIDDRgbVal(IMAGE_ROOT,p.nsamples.val,p.nframes.val,p.fskip.val,
                           p.isize.val,p.cropmode.val,p.rand_order.val,p.index_skip.val)
 
@@ -154,4 +144,5 @@ def load(cfg):
     loader = get_loaders(cfg,data,p.batch_size)
 
     return data,loader
+
 

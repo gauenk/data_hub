@@ -119,6 +119,12 @@ def load(cfg):
     for mode in modes:
         nsamples[mode] = optional(cfg,"nsamples_%s"%mode,def_nsamples)
 
+    # -- batch size --
+    def_batch_size = optional(cfg,'batch_size',1)
+    batch_size = edict()
+    for mode in modes:
+        batch_size[mode] = optional(cfg,'batch_size_%s'%mode,def_batch_size)
+
     # -- setup paths --
     iroot = IMAGE_PATH
     sroot = IMAGE_SETS
@@ -130,7 +136,6 @@ def load(cfg):
     data.te = BSD68(iroot,sroot,"test",noise_info,nsamples.te,isizes.te)
 
     # -- create loader --
-    batch_size = optional(cfg,'batch_size',1)
     loader = get_loaders(cfg,data,batch_size)
 
     return data,loader

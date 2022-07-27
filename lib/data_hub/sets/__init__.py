@@ -7,6 +7,7 @@ from . import set8
 from . import sid
 from . import sidd
 from . import davis
+from . import gopro
 
 # -- real: (noisy_1,...,noisy_N,clean_frame) sets --
 from . import submillilux
@@ -31,11 +32,14 @@ def load(cfg):
                    "urban100":urban100,
                    "set12":set12,
                    "div2k":div2k,
+                   "sidd_rgb_medium":sidd.rgb_medium,
                    "sidd":sidd.rgb_val,
                    "sidd_raw":sidd.raw_val,
                    "sidd_rgb":sidd.rgb_val,
                    "sidd_rgb_bench":sidd.rgb_bench,
-                   "davis":davis}
+                   "sidd_bench_full":sidd.bench_full,
+                   "davis":davis,
+                   "gopro":gopro}
     dnames = list(set_loaders.keys())
     if not(dname in dnames):
         print("Options: ",dnames)

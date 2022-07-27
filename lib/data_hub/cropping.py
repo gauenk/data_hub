@@ -20,7 +20,70 @@ from PIL import Image
 import torch.utils.data as data
 import torch.nn.functional as nnf
 import torchvision.transforms as transforms
+from torchvision.transforms import RandomCrop
 import torchvision.transforms.functional as tf
+
+def crop_vid(vid,cropmode,isize,region_temp):
+    if cropmode is None or cropmode == "none": return vid
+    if cropmode == "rand":
+        vid = run_rand_crop(vid,isize)
+        rtn = vid
+    elif cropmode in ["coords","coords_sobel","region","region_sobel"]:
+        sobel_vid = apply_sobel_filter(vid)
+        region = sample_sobel_region(sobel_vid,region_temp)
+        region = th.IntTensor(region)
+        rtn = region
+    elif cropmode in ["coords_rand","region_rand"]:
+        sobel_vid = apply_sobel_filter(vid)
+        region = sample_rand_region(sobel_vid,region_temp)
+        region = th.IntTensor(region)
+        rtn = region
+    elif cropmode in ["center_crop","center"]:
+        vid_cc = run_center_crop(vid,isize)
+        rtn = vid_cc
+    else:
+        raise NotImplementedError(f"Uknown crop mode [{cropmode}]")
+    return rtn
+
+def run_center_crop(vid_l,isize):
+    # -- ensure list --
+    single = False
+    if not isinstance(vid_l,list):
+        single = True
+        vid_l = [vid_l]
+
+    # -- all center crop --
+    crop_l = []
+    for vid in vid_l:
+        vid_c = tf.center_crop(vid)
+        crop_l.append(vid_c)
+
+    # -- return single if single input --
+    if single: crop_l = crop_l[0]
+    return crop_l
+
+def run_rand_crop(vid_l,isize):
+
+    # -- ensure list --
+    single = False
+    if not isinstance(vid_l,list):
+        single = True
+        vid_l = [vid_l]
+
+    # -- get crop info --
+    rand_crop = RandomCrop(isize)
+    i, j, h, w = RandomCrop.get_params(
+        vid_l[0], output_size=isize)
+
+    # -- crop all same --
+    crop_l = []
+    for vid in vid_l:
+        vid_c = tf.crop(vid, i, j, h, w)
+        crop_l.append(vid_c)
+
+    # -- return single if single input --
+    if single: crop_l = crop_l[0]
+    return crop_l
 
 def create_sobel_filter():
     # -- get sobel filter to detect rough spots --
@@ -135,6 +198,7 @@ def get_center_region(vshape,region_temp):
     t,c,h,w = vshape
     rt,rh,rw = region_temp.split("_")
     rt,rh,rw = int(rt),int(rh),int(rw)
+    if rt == 0: rt = t
 
     ts = t//2 - rt//2
     hs = h//2 - rh//2
