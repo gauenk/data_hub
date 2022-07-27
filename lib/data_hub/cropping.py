@@ -145,27 +145,33 @@ def rslice(vid,region):
 def sample_sobel_point(sobel_vid):
     t,c,h,w = sobel_vid.shape
     sobel_vid = th.mean(sobel_vid,1)
+    # print(sobel_vid.shape)
+    # assert sobel_vid.shape[1] == 1,"only one color channel."
     hw = h * w
     size = t * h * w
-    # ind = int(th.multinomial(size,1).item())
     ind = int(th.multinomial(sobel_vid.ravel(),1).item())
     ti = ind // hw
-    hi = (ind%hw)//h
+    hi = (ind%hw)//w
     wi = (ind%hw)%w
-    assert ti < t
-    assert hi < h
-    assert wi < w
+    info = str(sobel_vid.shape) + (" %d,%d,%d,%d" % (ind,ti,hi,wi))
+    assert ti < t,info
+    assert hi < h,info
+    assert wi < w,info
     point = [ti,hi,wi]
     return point
 
 def sample_rand_point(sobel_vid):
     t,c,h,w = sobel_vid.shape
+    sobel_vid = th.mean(sobel_vid,1)
+    # print(sobel_vid.shape)
+    # assert sobel_vid.shape[1] == 1,"only one color channel."
     hw = h * w
     size = t * h * w
     ind = int(th.multinomial(size,1).item())
     ti = ind // hw
-    hi = (ind%hw)//h
+    hi = (ind%hw)//w
     wi = (ind%hw)%w
+    info = str(sobel_vid.shape) + (" %d,%d,%d,%d" % (ind,ti,hi,wi))
     assert ti < t
     assert hi < h
     assert wi < w
