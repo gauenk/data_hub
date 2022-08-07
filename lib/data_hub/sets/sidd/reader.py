@@ -33,6 +33,23 @@ def read_file_pair(fn_pair,mode):
         pair.append(img_i)
     return pair[0],pair[1]
 
+def read_cropped_medium_files(iroot,mode):
+    iroot = Path(iroot)
+    in_dir = iroot / "input"
+    gt_dir = iroot / "groundtruth"
+    pairs,fids = [],[]
+    for fn in in_dir.iterdir():
+        fid,fnum = str(fn.stem).split("_")
+        fid,fnum = int(fid),int(fnum.split(".")[0])
+        in_fn = in_dir / ("%s_%s.png" % (fid,fnum))
+        gt_fn = gt_dir / ("%s_%s.png" % (fid,fnum))
+        pairs.append([in_fn,gt_fn])
+        fids.append(fid)
+    order = np.argsort(fids)
+    pairs  = [pairs[o] for o in order]
+    nimgs = len(pairs)
+    groups = ["%02d" % gid for gid in range(nimgs)]
+    return pairs,groups
 
 def read_medium_files(iroot,mode):
     iroot = Path(iroot)

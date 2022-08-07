@@ -16,6 +16,7 @@ from torchvision.transforms import RandomCrop
 import torchvision.transforms.functional as tvF
 
 # -- project imports --
+from data_hub.opt_parsing import parse_cfg
 from data_hub.common import get_loaders,optional,get_isize
 from data_hub.transforms import get_noise_transform,noise_from_cfg
 from data_hub.reproduce import RandomOnce,get_random_state,enumerate_indices
@@ -105,23 +106,14 @@ def load(cfg):
     # -- noise and dyanmics --
     noise_info = noise_from_cfg(cfg)
 
-    # -- set-up --
+    # -- field names and defaults --
     modes = ['tr','val','te']
-
-    # -- color or bw --
-    use_bw = optional(cfg,"bw",False)
-
-    # -- frame sizes --
-    def_isize = optional(cfg,"isize",None)
-    isizes = edict()
-    for mode in modes:
-        isizes[mode] = get_isize(optional(cfg,"isize_%s"%mode,def_isize))
-
-    # -- samples --
-    def_nsamples = optional(cfg,"nsamples",-1)
-    nsamples = edict()
-    for mode in modes:
-        nsamples[mode] = optional(cfg,"nsamples_%s"%mode,def_nsamples)
+    fields = {"batch_size":1,
+              "nsamples":-1,
+              "isize":None,
+              "bw":False,
+              "rand_order":False}
+    p = parse_cfg(cfg,modes,fields)
 
     # -- setup paths --
     iroot = IMAGE_PATH
@@ -129,13 +121,15 @@ def load(cfg):
 
     # -- create objcs --
     data = edict()
-    data.tr = URBAN100(iroot,sroot,"train",noise_info,use_bw,nsamples.tr,isizes.tr)
-    data.val = URBAN100(iroot,sroot,"val",noise_info,use_bw,nsamples.val,isizes.val)
-    data.te = URBAN100(iroot,sroot,"test",noise_info,use_bw,nsamples.te,isizes.te)
+    data.tr = URBAN100(iroot,sroot,"train",noise_info,
+                       p.bw.tr,p.nsamples.tr,p.isize.tr)
+    data.val = URBAN100(iroot,sroot,"val",noise_info,
+                        p.bw.val,p.nsamples.val,p.isize.val)
+    data.te = URBAN100(iroot,sroot,"test",noise_info,
+                       p.bw.te,p.nsamples.te,p.isize.te)
 
     # -- create loader --
-    batch_size = optional(cfg,'batch_size',1)
-    loader = get_loaders(cfg,data,batch_size)
+    loader = get_loaders(cfg,data,p.batch_size)
 
     return data,loader
 

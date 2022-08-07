@@ -33,6 +33,12 @@ def crop_vid(vid,cropmode,isize,region_temp):
         region = sample_sobel_region(sobel_vid,region_temp)
         region = th.IntTensor(region)
         rtn = region
+    elif cropmode in ["sobel"]:
+        sobel_vid = apply_sobel_filter(vid)
+        region = sample_sobel_region(sobel_vid,region_temp)
+        region = th.IntTensor(region)
+        vid_cc = rslice(vid,region)
+        rtn = vid_cc
     elif cropmode in ["coords_rand","region_rand"]:
         sobel_vid = apply_sobel_filter(vid)
         region = sample_rand_region(sobel_vid,region_temp)
@@ -55,7 +61,7 @@ def run_center_crop(vid_l,isize):
     # -- all center crop --
     crop_l = []
     for vid in vid_l:
-        vid_c = tf.center_crop(vid)
+        vid_c = tf.center_crop(vid,isize)
         crop_l.append(vid_c)
 
     # -- return single if single input --
@@ -140,7 +146,7 @@ def point2range(p,reg,lb,ub):
 
 def rslice(vid,region):
     t0,t1,h0,w0,h1,w1 = region
-    return region[t0:t1,:,h0:h1,w0:w1]
+    return vid[t0:t1,:,h0:h1,w0:w1]
 
 def sample_sobel_point(sobel_vid):
     t,c,h,w = sobel_vid.shape

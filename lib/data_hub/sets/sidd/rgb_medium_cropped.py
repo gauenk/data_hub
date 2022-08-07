@@ -28,10 +28,10 @@ from PIL import Image
 
 # -- local imports --
 from .paths import IMAGE_ROOT
-from .reader import read_medium_files,read_file_pair
+from .reader import read_cropped_medium_files,read_file_pair
 from .rgb_val import SIDDRgbVal
 
-class SIDDMediumSrgb():
+class SIDDMediumSrgbCropped():
 
     def __init__(self,iroot,nsamples=0,nframes=0,fskip=1,isize=None,
                  cropmode="coords",rand_order=False,index_skip=1):
@@ -55,8 +55,8 @@ class SIDDMediumSrgb():
             self.region_temp = "%d_%d_%d" % (nframes,isize[0],isize[1])
 
         # -- load paths --
-        droot = iroot / "SIDD_Medium_Srgb/Data"
-        self.files,self.groups = read_medium_files(droot,self.mode)
+        droot = iroot / "SIDD_Medium_Srgb/Cropped"
+        self.files,self.groups = read_cropped_medium_files(droot,self.mode)
         self.blocks = None
 
         # -- limit num of samples --
@@ -137,8 +137,9 @@ def load(cfg):
 
     # -- create objcs --
     data = edict()
-    data.tr = SIDDMediumSrgb(IMAGE_ROOT,p.nsamples.tr,p.nframes.tr,p.fskip.tr,
-                             p.isize.tr,p.cropmode.tr,p.rand_order.tr,p.index_skip.tr)
+    data.tr = SIDDMediumSrgbCropped(IMAGE_ROOT,p.nsamples.tr,p.nframes.tr,p.fskip.tr,
+                                    p.isize.tr,p.cropmode.tr,p.rand_order.tr,
+                                    p.index_skip.tr)
     data.val = SIDDRgbVal(IMAGE_ROOT,p.nsamples.val,p.nframes.val,p.fskip.val,
                           p.isize.val,p.cropmode.val,p.rand_order.val,p.index_skip.val)
 

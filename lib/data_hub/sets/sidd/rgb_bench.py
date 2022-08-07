@@ -108,19 +108,20 @@ def load(cfg):
     fields = {"batch_size":1,
               "nsamples":-1,
               "isize":None,
+              "fskip":1,
               "fstride":1,
               "nframes":0,
               "rand_order":False,
               "cropmode":"region"}
-    p = parse_cfg(modes,fields)
+    p = parse_cfg(cfg,modes,fields)
 
     # -- create objcs --
     data = edict()
     data.val = SIDDRgbBench(IMAGE_ROOT,p.nsamples.val,p.nframes.val,
-                            p.fskip.val,p.isizes.val)
+                            p.fskip.val,p.isize.val)
 
     # -- create loader --
-    loader = get_loaders(cfg,data,batch_size)
+    loader = get_loaders(cfg,data,p.batch_size)
 
     return data,loader
 

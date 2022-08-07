@@ -1,3 +1,4 @@
+from . import rgb_medium_cropped
 from . import rgb_medium
 from . import raw_val
 from . import rgb_val

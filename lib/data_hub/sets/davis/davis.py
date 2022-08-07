@@ -131,10 +131,8 @@ def load(cfg):
     # -- noise and dyanmics --
     noise_info = noise_from_cfg(cfg)
 
-    # -- set-up --
-    modes = ['tr','val','te']
-
     # -- field names and defaults --
+    modes = ['tr','val','te']
     fields = {"batch_size":1,
               "nsamples":-1,
               "isize":None,
