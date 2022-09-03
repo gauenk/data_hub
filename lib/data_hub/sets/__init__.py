@@ -41,7 +41,8 @@ def load(cfg):
                    "sidd_rgb_bench":sidd.rgb_bench,
                    "sidd_bench_full":sidd.bench_full,
                    "davis":davis,
-                   "gopro":gopro}
+                   "gopro":gopro.gopro,
+                   "gopro_cropped":gopro.gopro_cropped}
     dnames = list(set_loaders.keys())
     if not(dname in dnames):
         print("Options: ",dnames)

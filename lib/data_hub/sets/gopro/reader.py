@@ -58,6 +58,12 @@ def get_video_paths(vid_dir,ext="png"):
     order = np.argsort(vid_ids)
     vid_ids = [vid_ids[o] for o in order]
     vid_fns = [vid_fns[o] for o in order]
+
+    # -- frame ids start @ zero --
+    vid_ids = np.array(vid_ids)
+    vid_ids -= vid_ids.min()
+    vid_ids = list(vid_ids)
+
     return vid_fns,vid_ids
 
 def get_vid_names(sroot):

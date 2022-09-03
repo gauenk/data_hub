@@ -22,15 +22,17 @@ def get_vid_sets(root):
     vid_sets = {f.stem:f for f in root.iterdir()}
     return vid_sets
 
-def read_video(path,nframes,fmt,itype):
+def read_video(path,nframes,fmt,ext,itype):
     if itype == "rgb":
-        return read_rgb_video(path,nframes,fmt)
+        return read_rgb_video(path,nframes,fmt,ext)
     elif itype == "raw":
         return read_raw_video(path,nframes,fmt)
     else:
         raise ValueError(f"Uknown video type [{itype}]")
 
 def read_raw_video(path,nframes,fmt):
+    if isinstance(path,str):
+        path = Path(path)
     vid = []
     ext = list(path.iterdir())[0].suffix[1:]
     for t in range(nframes):
@@ -40,10 +42,12 @@ def read_raw_video(path,nframes,fmt):
         vid.append(vid_t)
     return vid
 
-def read_rgb_video(path,nframes,fmt):
+def read_rgb_video(path,nframes,fmt,ext):
+    if isinstance(path,str):
+        path = Path(path)
     vid = []
     for t in range(nframes):
-        path_t = path / ("%05d.png" % t)
+        path_t = path / (("%s.%s" % (fmt,ext)) % t)
         if not path_t.exists(): break
         vid_t = Image.open(str(path_t)).convert("RGB")
         vid_t = (np.array(vid_t)*1.).astype(np.float32)
@@ -104,7 +108,8 @@ def load_video(cfg):
     # -- pick --
     nframes = optional(cfg,"nframes",85)
     fmt = optional(cfg,"frame_fmt","%05d")
+    ext = optional(cfg,"frame_ext","png")
     itype = set_info['itype']
-    vid = read_video(set_path,nframes,fmt,itype)
+    vid = read_video(set_path,nframes,fmt,ext,itype)
 
     return vid

@@ -40,8 +40,8 @@ def crop_vid(vid,cropmode,isize,region_temp):
         vid_cc = rslice(vid,region)
         rtn = vid_cc
     elif cropmode in ["coords_rand","region_rand"]:
-        sobel_vid = apply_sobel_filter(vid)
-        region = sample_rand_region(sobel_vid,region_temp)
+        vshape = vid.shape
+        region = sample_rand_region(vshape,region_temp)
         region = th.IntTensor(region)
         rtn = region
     elif cropmode in ["center_crop","center"]:
@@ -166,18 +166,11 @@ def sample_sobel_point(sobel_vid):
     point = [ti,hi,wi]
     return point
 
-def sample_rand_point(sobel_vid):
-    t,c,h,w = sobel_vid.shape
-    sobel_vid = th.mean(sobel_vid,1)
-    # print(sobel_vid.shape)
-    # assert sobel_vid.shape[1] == 1,"only one color channel."
-    hw = h * w
-    size = t * h * w
-    ind = int(th.multinomial(size,1).item())
-    ti = ind // hw
-    hi = (ind%hw)//w
-    wi = (ind%hw)%w
-    info = str(sobel_vid.shape) + (" %d,%d,%d,%d" % (ind,ti,hi,wi))
+def sample_rand_point(vshape):
+    t,c,h,w = vshape
+    ti = int(np.random.rand(1).item()*t)
+    hi = int(np.random.rand(1).item()*h)
+    wi = int(np.random.rand(1).item()*w)
     assert ti < t
     assert hi < h
     assert wi < w
@@ -206,10 +199,10 @@ def sample_sobel_region(sobel_vid,reg_temp):
     region = point_to_region(point,reg_temp,nframes,height,width)
     return region
 
-def sample_rand_region(sobel_vid):
-    nframes,c,height,width = sobel_vid.shape
-    point = sample_rand_point(sobel_vid)
-    region = point_to_region(point,reg_temp,nframes,height,width)
+def sample_rand_region(vshape,reg_temp):
+    t,c,h,w = vshape
+    point = sample_rand_point(vshape)
+    region = point_to_region(point,reg_temp,t,h,w)
     return region
 
 def get_center_region(vshape,region_temp):
