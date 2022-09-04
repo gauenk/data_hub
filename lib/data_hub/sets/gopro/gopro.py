@@ -54,7 +54,6 @@ class GoPro():
         # -- load paths --
         self.paths = read_files(iroot,split,nframes,fstride,ext="jpg")
         self.groups = sorted(list(self.paths['images'].keys()))
-        print(self.groups)
 
         # -- limit num of samples --
         self.indices = enumerate_indices(len(self.paths['images']),
