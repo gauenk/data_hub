@@ -72,8 +72,9 @@ def get_vid_names(sroot):
         if vid_name.stem in ["input","target","groundtruth"]: continue
         vid_names.append(str(vid_name.stem))
         vid_names_abbr.append("%02d" % vidx)
-    vid_names = sorted(vid_names,key=vid_names)
-    vid_names_abbr = sorted(vid_names,key=vid_names_abbr)
+    sorts = sorted(zip(vid_names,vid_names_abbr),reverse=False)
+    vid_names = [s[0] for s in sorts]
+    vid_names_abbr = [s[1] for s in sorts]
     return vid_names,vid_names_abbr
 
 def read_files(iroot,ds_split,nframes,stride,ext="png"):
