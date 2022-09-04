@@ -67,11 +67,10 @@ def get_video_paths(vid_dir,ext="png"):
     return vid_fns,vid_ids
 
 def get_vid_names(sroot):
-    vid_names = [],[]
-    for vid_name in enumerate(sroot.iterdir()):
+    vid_names = []
+    for vid_name in sroot.iterdir():
         if vid_name.stem in ["input","target","groundtruth"]: continue
         vid_names.append(str(vid_name.stem))
-        vid_names_abbr.append("%02d" % vidx)
     vid_names = sorted(vid_names)
     nvids = len(vid_names)
     vid_names_abbr = ["%02d" % vidx for vidx in range(nvids)]
