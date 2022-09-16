@@ -27,6 +27,14 @@ from data_hub.opt_parsing import parse_cfg
 from .paths import BASE
 from .reader_cropped import read_names,read_data
 
+# -- augmentations init --
+from data_hub.augmentations import Augment_RGB_torch
+import random
+augment = Augment_RGB_torch()
+transforms_aug = [method for method in dir(augment) if callable(getattr(augment, method)) if not method.startswith('_')]
+
+
+
 class GoProCropped():
 
     def __init__(self,iroot,split,
@@ -91,6 +99,11 @@ class GoProCropped():
         else:
             vids = crop_vid([sharp,blur],self.cropmode,self.isize,self.region_temp)
             sharp,blur = vids
+
+        # -- augmentations --
+        apply_trans = transforms_aug[random.getrandbits(3)]
+        sharp = getattr(augment, apply_trans)(sharp)
+        blur = getattr(augment, apply_trans)(blur)
 
         # -- manage flow and output --
         index_th = th.IntTensor([image_index])

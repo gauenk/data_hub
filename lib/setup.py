@@ -26,6 +26,6 @@ setup(
     author_email='gauenk@purdue.edu',
     license='MIT',
     keywords='datasets',
-    install_requires=['numpy','torch','flake8','vpss'],
+    install_requires=['easydict',"torch","pathlib"],
     packages=find_packages(),
 )

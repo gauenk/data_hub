@@ -1,6 +1,7 @@
 import cv2
 import random
 import numpy as np
+import torch as th
 
 
 def mod_crop(img, scale):
@@ -162,3 +163,31 @@ def random_augmentation(*args):
     for data in args:
         out.append(data_augmentation(data, flag_aug).copy())
     return out
+
+### rotate and flip (thank you uformer)
+class Augment_RGB_torch:
+    def __init__(self):
+        pass
+    def transform0(self, torch_tensor):
+        return torch_tensor
+    def transform1(self, torch_tensor):
+        torch_tensor = th.rot90(torch_tensor, k=1, dims=[-1,-2])
+        return torch_tensor
+    def transform2(self, torch_tensor):
+        torch_tensor = th.rot90(torch_tensor, k=2, dims=[-1,-2])
+        return torch_tensor
+    def transform3(self, torch_tensor):
+        torch_tensor = th.rot90(torch_tensor, k=3, dims=[-1,-2])
+        return torch_tensor
+    def transform4(self, torch_tensor):
+        torch_tensor = torch_tensor.flip(-2)
+        return torch_tensor
+    def transform5(self, torch_tensor):
+        torch_tensor = (th.rot90(torch_tensor, k=1, dims=[-1,-2])).flip(-2)
+        return torch_tensor
+    def transform6(self, torch_tensor):
+        torch_tensor = (th.rot90(torch_tensor, k=2, dims=[-1,-2])).flip(-2)
+        return torch_tensor
+    def transform7(self, torch_tensor):
+        torch_tensor = (th.rot90(torch_tensor, k=3, dims=[-1,-2])).flip(-2)
+        return torch_tensor

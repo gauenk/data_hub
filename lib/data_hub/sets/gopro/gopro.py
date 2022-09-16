@@ -4,7 +4,6 @@ GoPro dataset
 """
 
 # -- python imports --
-import pdb
 import numpy as np
 from pathlib import Path
 from einops import rearrange,repeat
