@@ -1,5 +1,6 @@
 
 # -- python imports --
+import copy
 import numpy as np
 from easydict import EasyDict as edict
 
@@ -40,16 +41,22 @@ def get_loaders(cfg,data,batch_size):
 
     # -- train and val --
     if ("tr" in data) and not(data.tr is None):
-        kwargs['batch_size'] = batch_size.tr
-        loader.tr = DataLoader(data.tr,**kwargs)
+        kwargs_tr = copy.deepcopy(kwargs)
+        kwargs_tr['shuffle'] = optional(cfg,'rand_order_tr',True)
+        kwargs_tr['batch_size'] = batch_size.tr
+        loader.tr = DataLoader(data.tr,**kwargs_tr)
     if ("val" in data) and not(data.val is None):
-        kwargs['batch_size'] = batch_size.val
-        loader.val = DataLoader(data.val,**kwargs)
+        kwargs_val = copy.deepcopy(kwargs)
+        kwargs_val['shuffle'] = optional(cfg,'rand_order_val',False)
+        kwargs_val['batch_size'] = batch_size.val
+        loader.val = DataLoader(data.val,**kwargs_val)
 
     # -- test --
     if ("te" in data) and not(data.te is None):
-        kwargs['batch_size'] = batch_size.te
-        loader.te = DataLoader(data.te,**kwargs)
+        kwargs_te = copy.deepcopy(kwargs)
+        kwargs_te['shuffle'] = optional(cfg,'rand_order_te',False)
+        kwargs_te['batch_size'] = batch_size.te
+        loader.te = DataLoader(data.te,**kwargs_te)
 
     return loader
 
