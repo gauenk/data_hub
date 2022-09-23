@@ -26,7 +26,8 @@ setup(
     author_email='gauenk@purdue.edu',
     license='MIT',
     keywords='datasets',
-    install_requires=['easydict',"torch","pathlib"],
+    install_requires=['easydict',"torch","pathlib","rawpy","joblib",
+                      "hdf5storage","tqdm","pandas"],
     package_dir={"": "lib"},
     packages=find_packages(""),
 )

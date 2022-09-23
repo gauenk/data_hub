@@ -6,13 +6,13 @@ from pathlib import Path
 from easydict import EasyDict as edict
 from einops import rearrange,repeat
 
-# def read_data(paths_blur,bw=False):
+# def read_data(paths_clean,bw=False):
 
 #     # -- get files --
 #     paths = edict()
-#     paths.blur = paths_blur
-#     paths.blur_gamma = [Path(str(p).replace("blur","blur_gamma")) for p in paths_blur]
-#     paths.sharp = [Path(str(p).replace("blur","sharp")) for p in paths_blur]
+#     paths.blur = paths_clean
+#     paths.blur_gamma = [Path(str(p).replace("blur","blur_gamma")) for p in paths_clean]
+#     paths.sharp = [Path(str(p).replace("blur","sharp")) for p in paths_clean]
 
 #     # -- read video --
 #     data = edict()
@@ -55,16 +55,28 @@ def get_video_paths(vid_dir,ext="png"):
 
     return vid_fns,vid_ids
 
-def read_names(iroot,nframes,ext="png"):
+def get_vid_names(vid_fn):
+    with open(vid_fn,"r") as f:
+        names = f.readlines()
+    names = [name.strip() for name in names]
+    return names
+
+def read_names(iroot,sroot,nframes,ds_split,ext="png"):
     """
     Just read the folder names
     """
 
-    root = iroot / "cropped/train/input"
+    # -- read split names --
+    split_fn = sroot / ("%s.txt" % ds_split)
+    split_names = get_vid_names(split_fn)
+
+    # -- read path names for split --
     names = []
-    for dname in root.iterdir():
+    for dname in iroot.iterdir():
         name = str(dname.stem)
-        tframes = len(paths_at_name(iroot,"input",name))
+        base_name = name.split("_")[0]
+        if not(base_name in split_names): continue
+        tframes = len(list((iroot / name).iterdir()))
         nsubs = tframes - nframes + 1
         assert nsubs > 0
         for sub in range(nsubs):
@@ -72,26 +84,16 @@ def read_names(iroot,nframes,ext="png"):
             names.append(name_s)
     return names
 
-def paths_at_name(iroot,itype,name):
-    root = iroot / "cropped/train/" / itype / name
-    paths = sorted(list(root.iterdir()))
-    return paths
-
-def read_data(name_s,iroot,nframes):
+def read_data(name_s,iroot,nframes,bw=False):
 
     # -- split name --
     name,fstart = name_s.split("+")
     fstart = int(fstart)
 
-    # -- load blur --
-    paths = paths_at_name(iroot,"input",name)
+    # -- load clean --
+    paths = sorted(list((iroot / name).iterdir()))
     paths = [paths[ti] for ti in range(fstart,fstart+nframes)]
-    blur = read_video(paths,bw=False)
-
-    # -- load sharp --
-    paths = paths_at_name(iroot,"groundtruth",name)
-    paths = [paths[ti] for ti in range(fstart,fstart+nframes)]
-    sharp = read_video(paths,bw=False)
+    clean = read_video(paths,bw=bw)
 
     # -- get frame nums --
     fnums = []
@@ -100,5 +102,5 @@ def read_data(name_s,iroot,nframes):
         fnums.append(fnum)
     fnums = th.from_numpy(np.array(fnums))
 
-    return blur,sharp,fnums
+    return clean,fnums
 

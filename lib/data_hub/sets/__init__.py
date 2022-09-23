@@ -41,6 +41,7 @@ def load(cfg):
                    "sidd_rgb_bench":sidd.rgb_bench,
                    "sidd_bench_full":sidd.bench_full,
                    "davis":davis,
+                   "davis_cropped":davis.davis_cropped,
                    "gopro":gopro.gopro,
                    "gopro_cropped":gopro.gopro_cropped}
     dnames = list(set_loaders.keys())
