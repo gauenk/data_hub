@@ -28,9 +28,9 @@ from .paths import BASE
 from .reader_cropped import read_names,read_data
 
 # -- augmentations init --
-from data_hub.augmentations import Augment_RGB_torch
 import random
-augment = Augment_RGB_torch()
+from data_hub.augmentations import Augment_RGB_Flips
+augment = Augment_RGB_Flips()
 transforms_aug = [method for method in dir(augment) if callable(getattr(augment, method)) if not method.startswith('_')]
 
 

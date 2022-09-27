@@ -2,7 +2,9 @@ import cv2
 import random
 import numpy as np
 import torch as th
-
+import torchvision.transforms as tvt
+import torchvision.transforms.functional as tvtF
+from functools import partial
 
 def mod_crop(img, scale):
     """Mod crop images, used during testing.
@@ -110,7 +112,7 @@ def img_rotate(img, angle, center=None, scale=1.0):
     rotated_img = cv2.warpAffine(img, matrix, (w, h))
     return rotated_img
 
-def data_augmentation(image, mode):
+def flippy_augmentation(image, mode):
     """
     Performs data augmentation of the input image
     Input:
@@ -161,11 +163,37 @@ def random_augmentation(*args):
     out = []
     flag_aug = random.randint(0,7)
     for data in args:
-        out.append(data_augmentation(data, flag_aug).copy())
+        out.append(flippy_augmentation(data, flag_aug).copy())
     return out
 
+### scaling augmentations
+def get_scale_augs(scales):
+    if scales is None: return None
+    if len(scales) == 0 and scales[0] == 1:
+        return None
+    augs = []
+    for scale in scales:
+        aug_s = partial(rescale_transform,scale)
+        augs.append(aug_s)
+    return augs
+
+def rescale_transform(scale, torch_tensor):
+    H,W = torch_tensor.shape[-2:]
+    sH,sW = int(scale*H),int(scale*W)
+    rescaled = tvtF.resize(torch_tensor, (sH,sW),
+                           tvt.InterpolationMode.BILINEAR,
+                           antialias=True)
+    return rescaled
+
 ### rotate and flip (thank you uformer)
-class Augment_RGB_torch:
+def get_flippy_augs():
+    augment = Augment_RGB_Flips()
+    augs = [getattr(augment,method) for method in dir(augment)
+            if callable(getattr(augment, method))
+            if not method.startswith('_')]
+    return augs
+
+class Augment_RGB_Flips:
     def __init__(self):
         pass
     def transform0(self, torch_tensor):

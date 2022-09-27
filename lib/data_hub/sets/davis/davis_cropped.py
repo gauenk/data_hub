@@ -30,17 +30,15 @@ from .paths import IMAGE_SETS
 from .reader_cropped import read_names,read_data
 
 # -- augmentations init --
-from data_hub.augmentations import Augment_RGB_torch
 import random
-augment = Augment_RGB_torch()
-transforms_aug = [method for method in dir(augment) if callable(getattr(augment, method)) if not method.startswith('_')]
+from data_hub.augmentations import get_scale_augs,get_flippy_augs
 
 class DAVISCropped():
 
     def __init__(self,iroot,sroot,split,noise_info,
                  nsamples=0,nframes=0,fstride=1,isize=None,
                  bw=False,cropmode="coords",rand_order=False,
-                 index_skip=1):
+                 index_skip=1,flippy_augs=None,scale_augs=None):
 
         # -- set init params --
         self.iroot = iroot
@@ -74,6 +72,12 @@ class DAVISCropped():
                                          rand_order,index_skip)
         self.nsamples = len(self.indices)
 
+        # -- augmentations --
+        self.flippy_augs = flippy_augs
+        self.nflip_augs = 0 if flippy_augs is None else len(flippy_augs)
+        self.scale_augs = scale_augs
+        self.nscale_augs = 0 if scale_augs is None else len(scale_augs)
+
         # -- repro --
         self.noise_once = optional(noise_info,"sim_once",False)
         # self.fixRandNoise_1 = RandomOnce(self.noise_once,self.nsamples)
@@ -101,6 +105,16 @@ class DAVISCropped():
         vid_name = self.names[image_index]
         clean,frame_nums = read_data(vid_name,self.iroot,self.nframes,self.bw)
 
+        # -- augmentations --
+        if self.nscale_augs > 0:
+            aug_idx = random.randint(0,self.nscale_augs-1)
+            trans_fxn = self.scale_augs[aug_idx]
+            clean = trans_fxn(clean)
+        if self.nflip_augs > 0:
+            aug_idx = random.randint(0,self.nflip_augs-1)
+            trans_fxn = self.flippy_augs[aug_idx]
+            clean = trans_fxn(clean)
+
         # -- cropping --
         region = th.IntTensor([])
         use_region = "region" in self.cropmode or "coords" in self.cropmode
@@ -108,10 +122,6 @@ class DAVISCropped():
             region = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
         else:
             clean = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
-
-        # -- augmentations --
-        apply_trans = transforms_aug[random.getrandbits(3)]
-        clean = getattr(augment, apply_trans)(clean)
 
         # -- get noise --
         # with self.fixRandNoise_1.set_state(index):
@@ -154,6 +164,12 @@ def load(cfg):
               "cropmode":"region"}
     p = parse_cfg(cfg,modes,fields)
 
+    # -- augmentations --
+    aug_flips = optional(cfg,"aug_training_flips",True)
+    flippy_augs = get_flippy_augs() if aug_flips else None
+    aug_scales = optional(cfg,"aug_training_scales",None)
+    scale_augs = get_scale_augs(aug_scales)
+
     # -- setup paths --
     iroot = BASE
     sroot = IMAGE_SETS
@@ -162,7 +178,7 @@ def load(cfg):
     data = edict()
     data.tr = DAVISCropped(iroot,sroot,"train",noise_info,p.nsamples.tr,
                     p.nframes.tr,p.fstride.tr,p.isize.tr,p.bw.tr,p.cropmode.tr,
-                    p.rand_order.tr,p.index_skip.tr)
+                    p.rand_order.tr,p.index_skip.tr,flippy_augs,scale_augs)
     data.val = DAVISCropped(iroot,sroot,"val",noise_info,p.nsamples.val,
                      p.nframes.val,p.fstride.val,p.isize.val,p.bw.val,p.cropmode.tr,
                      p.rand_order.val,p.index_skip.val)
