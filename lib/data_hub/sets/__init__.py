@@ -11,6 +11,7 @@ from . import gopro
 
 # -- real: (noisy_1,...,noisy_N,clean_frame) sets --
 from . import submillilux
+from . import sird
 
 # -- single: (noisy_frame,clean_frame) sets --
 from . import bsd68
@@ -43,7 +44,8 @@ def load(cfg):
                    "davis":davis,
                    "davis_cropped":davis.davis_cropped,
                    "gopro":gopro.gopro,
-                   "gopro_cropped":gopro.gopro_cropped}
+                   "gopro_cropped":gopro.gopro_cropped,
+                   "sird":sird}
     dnames = list(set_loaders.keys())
     if not(dname in dnames):
         print("Options: ",dnames)
