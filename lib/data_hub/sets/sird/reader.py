@@ -233,7 +233,7 @@ def read_files(iroot,sroot,ds_split,nframes,stride):
             paths_t = [vid_paths[bnd(t,total_nframes)] for t in range(start_t,end_t)]
 
             # -- spatial regions --
-            xy_list = part_list(paths_t[0])
+            xy_list = part_list(paths_t[0]) # this doesn't work for nframes > 1
             for (x,y) in xy_list:
 
                 # -- video id --
