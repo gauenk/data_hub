@@ -20,7 +20,8 @@ from torchvision.transforms.functional import center_crop
 from data_hub.common import get_loaders,optional,get_isize
 from data_hub.transforms import get_noise_transform,noise_from_cfg
 from data_hub.reproduce import RandomOnce,get_random_state,enumerate_indices
-from data_hub.cropping import apply_sobel_filter,sample_sobel_region,sample_rand_region,get_center_region
+# from data_hub.cropping import apply_sobel_filter,sample_sobel_region,sample_rand_region,get_center_region
+from data_hub.cropping import crop_vid
 
 # -- local imports --
 from .paths import IMAGE_PATH,IMAGE_SETS
@@ -67,29 +68,6 @@ class Set8():
     def __len__(self):
         return self.nsamples
 
-    def _crop_vid(self,vid):
-        if self.cropmode is None or self.cropmode == "none": return vid
-        if self.cropmode == "rand":
-            vid = self.rand_crop(vid,self.isize)
-            rtn = vid
-        elif self.cropmode in ["coords","coords_sobel","region","region_sobel"]:
-            sobel_vid = apply_sobel_filter(vid)
-            region = sample_sobel_region(sobel_vid,self.region_temp)
-            region = th.IntTensor(region)
-            rtn = region
-        elif self.cropmode in ["coords_rand","region_rand"]:
-            sobel_vid = apply_sobel_filter(vid)
-            region = sample_rand_region(sobel_vid,self.region_temp)
-            region = th.IntTensor(region)
-            rtn = region
-        elif self.cropmode in ["coords_center","region_center"]:
-            region = get_center_region(vid.shape,self.region_temp)
-            region = th.IntTensor(region)
-            rtn = region
-        else:
-            raise NotImplementedError(f"Uknown crop mode [{self.cropmode}]")
-        return rtn
-
     def __getitem__(self, index):
         """
         Args:
@@ -113,17 +91,15 @@ class Set8():
 
         # -- meta info --
         frame_nums = self.paths['fnums'][group]
+        frame_nums = th.IntTensor(frame_nums)
 
         # -- cropping --
         region = th.IntTensor([])
         use_region = "region" in self.cropmode or "coords" in self.cropmode
-        if use_region: region = self._crop_vid(clean)
-        else: clean = self._crop_vid(clean)
-
-        # -- limit frame --
-        # if not(self.rand_crop is None):
-        #     clean = center_crop(clean,self.isize)
-        #     # clean = self.rand_crop(clean)
+        if use_region:
+            region = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
+        else:
+            clean = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
 
         # -- get noise --
         # with self.fixRandNoise_1.set_state(index):

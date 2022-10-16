@@ -69,6 +69,7 @@ def read_names(iroot,sroot,nframes,ds_split,ext="png"):
     # -- read split names --
     split_fn = sroot / ("%s.txt" % ds_split)
     split_names = get_vid_names(split_fn)
+    iroot = iroot / "train"
 
     # -- read path names for split --
     names = []
@@ -91,7 +92,7 @@ def read_data(name_s,iroot,nframes,bw=False):
     fstart = int(fstart)
 
     # -- load clean --
-    paths = sorted(list((iroot / name).iterdir()))
+    paths = sorted(list((iroot / "train" / name).iterdir()))
     paths = [paths[ti] for ti in range(fstart,fstart+nframes)]
     clean = read_video(paths,bw=bw)
 

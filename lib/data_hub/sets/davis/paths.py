@@ -1,4 +1,5 @@
 
+# import socket
 from pathlib import Path
 BASE = Path("/home/gauenk/Documents/data/davis/DAVIS/")
 IMAGE_PATH = BASE / Path("./JPEGImages/480p/")

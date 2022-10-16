@@ -111,7 +111,7 @@ def frame_name_from_dir(vid_dir,t):
     vid_stem = vid_dir.stem
     frame_name = vid_stem + ("-%s" % t)
     return frame_name
-    
+
 def get_frame_ids(vid_dir):
     fids = []
     for fdir in vid_dir.iterdir():
