@@ -44,7 +44,7 @@ def crop_vid(vid,cropmode,isize,region_temp):
         region = sample_rand_region(vshape,region_temp)
         region = th.IntTensor(region)
         rtn = region
-    elif cropmode in ["center_crop","center"]:
+    elif cropmode in ["center_crop","center","centercrop"]:
         vid_cc = run_center_crop(vid,isize)
         rtn = vid_cc
     else:

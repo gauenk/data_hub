@@ -20,6 +20,7 @@ from torchvision.transforms.functional import center_crop
 from data_hub.common import get_loaders,optional,get_isize
 from data_hub.transforms import get_noise_transform,noise_from_cfg
 from data_hub.reproduce import RandomOnce,get_random_state,enumerate_indices
+from data_hub.opt_parsing import parse_cfg
 # from data_hub.cropping import apply_sobel_filter,sample_sobel_region,sample_rand_region,get_center_region
 from data_hub.cropping import crop_vid
 
@@ -128,63 +129,81 @@ def load(cfg):
     # -- noise and dyanmics --
     noise_info = noise_from_cfg(cfg)
 
-    # -- set-up --
+    # -- field names and defaults --
     modes = ['tr','val','te']
+    fields = {"batch_size":1,
+              "nsamples":-1,
+              "isize":None,
+              "fstride":1,
+              "nframes":0,
+              "fskip":1,
+              "bw":False,
+              "index_skip":1,
+              "rand_order":False,
+              "cropmode":"region"}
+    p = parse_cfg(cfg,modes,fields)
 
-    # -- bw --
-    def_bw = optional(cfg,"bw",False)
-    bw = edict()
-    for mode in modes:
-        bw[mode] = optional(cfg,"bw_%s"%mode,def_bw)
 
-    # -- frames --
-    def_nframes = optional(cfg,"nframes",0)
-    nframes = edict()
-    for mode in modes:
-        nframes[mode] = optional(cfg,"nframes_%s"%mode,def_nframes)
+    # # -- noise and dyanmics --
+    # noise_info = noise_from_cfg(cfg)
 
-    # -- fstride [amount of overlap for subbursts] --
-    def_fstride = optional(cfg,"fstride",1)
-    fstride = edict()
-    for mode in modes:
-        fstride[mode] = optional(cfg,"%s_fstride"%mode,def_fstride)
+    # # -- set-up --
+    # modes = ['tr','val','te']
 
-    # -- frame sizes --
-    def_isize = optional(cfg,"isize",None)
-    if def_isize == "-1_-1": def_size = None
-    isizes = edict()
-    for mode in modes:
-        isizes[mode] = get_isize(optional(cfg,"isize_%s"%mode,def_isize))
+    # # -- bw --
+    # def_bw = optional(cfg,"bw",False)
+    # bw = edict()
+    # for mode in modes:
+    #     bw[mode] = optional(cfg,"bw_%s"%mode,def_bw)
 
-    # -- samples --
-    def_nsamples = optional(cfg,"nsamples",-1)
-    nsamples = edict()
-    for mode in modes:
-        nsamples[mode] = optional(cfg,"nsamples_%s"%mode,def_nsamples)
+    # # -- frames --
+    # def_nframes = optional(cfg,"nframes",0)
+    # nframes = edict()
+    # for mode in modes:
+    #     nframes[mode] = optional(cfg,"nframes_%s"%mode,def_nframes)
 
-    # -- crop mode --
-    def_cropmode = optional(cfg,"cropmode","region_center")
-    cropmode = edict()
-    for mode in modes:
-        cropmode[mode] = optional(cfg,"cropmode_%s"%mode,def_cropmode)
+    # # -- fstride [amount of overlap for subbursts] --
+    # def_fstride = optional(cfg,"fstride",1)
+    # fstride = edict()
+    # for mode in modes:
+    #     fstride[mode] = optional(cfg,"%s_fstride"%mode,def_fstride)
 
-    # -- random order --
-    def_rand_order = optional(cfg,'rand_order',False)
-    rand_order = edict()
-    for mode in modes:
-        rand_order[mode] = optional(cfg,"rand_order_%s"%mode,def_rand_order)
+    # # -- frame sizes --
+    # def_isize = optional(cfg,"isize",None)
+    # if def_isize == "-1_-1": def_size = None
+    # isizes = edict()
+    # for mode in modes:
+    #     isizes[mode] = get_isize(optional(cfg,"isize_%s"%mode,def_isize))
 
-    # -- random order --
-    def_index_skip = optional(cfg,'index_skip',1)
-    index_skip = edict()
-    for mode in modes:
-        index_skip[mode] = optional(cfg,"index_skip_%s"%mode,def_index_skip)
+    # # -- samples --
+    # def_nsamples = optional(cfg,"nsamples",-1)
+    # nsamples = edict()
+    # for mode in modes:
+    #     nsamples[mode] = optional(cfg,"nsamples_%s"%mode,def_nsamples)
 
-    # -- batch size --
-    def_batch_size = optional(cfg,'batch_size',1)
-    batch_size = edict()
-    for mode in modes:
-        batch_size[mode] = optional(cfg,'batch_size_%s'%mode,def_batch_size)
+    # # -- crop mode --
+    # def_cropmode = optional(cfg,"cropmode","region_center")
+    # cropmode = edict()
+    # for mode in modes:
+    #     cropmode[mode] = optional(cfg,"cropmode_%s"%mode,def_cropmode)
+
+    # # -- random order --
+    # def_rand_order = optional(cfg,'rand_order',False)
+    # rand_order = edict()
+    # for mode in modes:
+    #     rand_order[mode] = optional(cfg,"rand_order_%s"%mode,def_rand_order)
+
+    # # -- random order --
+    # def_index_skip = optional(cfg,'index_skip',1)
+    # index_skip = edict()
+    # for mode in modes:
+    #     index_skip[mode] = optional(cfg,"index_skip_%s"%mode,def_index_skip)
+
+    # # -- batch size --
+    # def_batch_size = optional(cfg,'batch_size',1)
+    # batch_size = edict()
+    # for mode in modes:
+    #     batch_size[mode] = optional(cfg,'batch_size_%s'%mode,def_batch_size)
 
     # -- setup paths --
     iroot = IMAGE_PATH
@@ -192,18 +211,18 @@ def load(cfg):
 
     # -- create objcs --
     data = edict()
-    data.tr = Set8(iroot,sroot,"train",noise_info,nsamples.tr,
-                   nframes.tr,fstride.tr,isizes.tr,bw.tr,cropmode.tr,
-                   rand_order.tr,index_skip.tr)
-    data.val = Set8(iroot,sroot,"val",noise_info,nsamples.val,
-                    nframes.val,fstride.val,isizes.val,bw.val,cropmode.val,
-                    rand_order.val,index_skip.val)
-    data.te = Set8(iroot,sroot,"test",noise_info,nsamples.te,
-                   nframes.te,fstride.te,isizes.te,bw.te,cropmode.te,
-                   rand_order.te,index_skip.te)
+    data.tr = Set8(iroot,sroot,"train",noise_info,p.nsamples.tr,
+                   p.nframes.tr,p.fstride.tr,p.isize.tr,p.bw.tr,p.cropmode.tr,
+                   p.rand_order.tr,p.index_skip.tr)
+    data.val = Set8(iroot,sroot,"val",noise_info,p.nsamples.val,
+                    p.nframes.val,p.fstride.val,p.isize.val,p.bw.val,p.cropmode.val,
+                    p.rand_order.val,p.index_skip.val)
+    data.te = Set8(iroot,sroot,"test",noise_info,p.nsamples.te,
+                   p.nframes.te,p.fstride.te,p.isize.te,p.bw.te,p.cropmode.te,
+                   p.rand_order.te,p.index_skip.te)
 
     # -- create loader --
-    loader = get_loaders(cfg,data,batch_size)
+    loader = get_loaders(cfg,data,p.batch_size)
 
     return data,loader
 
