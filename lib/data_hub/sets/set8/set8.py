@@ -140,7 +140,7 @@ def load(cfg):
               "bw":False,
               "index_skip":1,
               "rand_order":False,
-              "cropmode":"region"}
+              "cropmode":"center"}
     p = parse_cfg(cfg,modes,fields)
 
 
