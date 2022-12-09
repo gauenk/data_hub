@@ -8,7 +8,7 @@ from torchvision import transforms as tvT
 
 # -- project imports --
 from data_hub.common import optional
-from .impl import AddGaussianNoiseSetN2N,GaussianBlur,AddGaussianNoise,AddPoissonNoiseBW,AddLowLightNoiseBW,AddHeteroGaussianNoise,ScaleZeroMean,QIS
+from .impl import AddMultiScaleGaussianNoise,GaussianBlur,AddGaussianNoise,AddPoissonNoiseBW,AddLowLightNoiseBW,AddHeteroGaussianNoise,ScaleZeroMean,QIS,Submillilux
 
 __all__ = ['get_noise_transform']
 
@@ -51,6 +51,8 @@ def choose_noise_transform(noise_info, verbose=False):
         return get_msg_noise(noise_info)
     elif ntype == "msg_simcl":
         return get_msg_simcl_noise(noise_info)
+    elif ntype in ["submillilux","starlight"]:
+        return get_submillilux_noise(noise_info)
     elif ntype in ["none","clean"]:
         def null(image): return image
         return null
@@ -101,9 +103,15 @@ def get_msg_noise(params):
     Noise Type: Multi-scale Gaussian  (MSG)
     - Each N images has it's own noise level
     """
-    std_range = (params['std_min'],params['std_max'])
-    gaussian_n2n = AddGaussianNoiseSetN2N(params['N'],std_range)
-    return gaussian_n2n
+    sigma_min = params['sigma_min']
+    sigma_max = params['sigma_max']
+    gaussian_msg = AddMultiScaleGaussianNoise(sigma_min,sigma_max)
+    return gaussian_msg
+
+def get_submillilux_noise(params):
+    ns = edict()
+    noise = Submillilux()
+    return noise
 
 # --------------------------------
 #
@@ -113,7 +121,7 @@ def get_msg_noise(params):
 
 def noise_from_cfg(cfg):
     ns = edict()
-    ns.sigma = cfg.sigma
+    # ns.sigma = cfg.sigma
     ntype = optional(cfg,'ntype','g')
     ns.ntype = ntype
     # -- additional fields --
@@ -123,6 +131,8 @@ def noise_from_cfg(cfg):
         fields = ["alpha"]
     elif ntype == "qis":
         fields = QIS.fields
+    elif ntype == "submillilux":
+        fields = []
     else:
         raise ValueError(f"Uknown noisy type [{ntype}] for fields")
 
@@ -139,6 +149,8 @@ def get_noise_config(name):
         config = get_poisson_config_from_name(name)
     elif name.split("-")[0] == "qis":
         config = get_qis_config_from_name(name)
+    elif name == "submillilux":
+        config = get_submillilux_config_from_name(name)
     else:
         raise ValueError(f"Uknown noise config [{name}]")
     return config
@@ -176,5 +188,7 @@ def get_qis_config_from_name(name):
     ns['name'] = name
     return ns
 
-
-
+def get_submillilux_config_from_name(name):
+    ns = edict()
+    ns['name'] = "submillilux"
+    return ns

@@ -19,6 +19,8 @@ from torchvision.transforms.functional import center_crop
 from data_hub.common import get_loaders,optional,get_isize
 # from data_hub.transforms import get_noise_transform,noise_from_cfg
 from data_hub.reproduce import RandomOnce,get_random_state,enumerate_indices
+from data_hub.cropping import crop_vid
+from data_hub.opt_parsing import parse_cfg
 
 # -- local imports --
 from .paths import IMAGE_PATH_REAL as IMAGE_PATH
@@ -28,7 +30,8 @@ from .reader import read_files,read_mats
 class SubmilliluxReal():
 
     def __init__(self,iroot,sroot,split,noise_info,
-                 nsamples=0,nframes=0,fskip=1,isize=None):
+                 nsamples=0,nframes=0,fskip=1,isize=None,
+                 cropmode="center"):
 
         # -- set init params --
         self.iroot = iroot
@@ -41,6 +44,14 @@ class SubmilliluxReal():
 
         # -- create transforms --
         self.noise_trans = None#get_noise_transform(noise_info,noise_only=True)
+
+        # -- manage cropping --
+        isize_is_none = isize is None or isize == "none"
+        self.crop = isize
+        self.cropmode = cropmode if not(isize_is_none) else "none"
+        self.region_temp = None
+        if not(isize_is_none):
+            self.region_temp = "%d_%d_%d" % (nframes,isize[0],isize[1])
 
         # -- load paths --
         self.paths = read_files(iroot,sroot,split,nframes,fskip,"mat")
@@ -79,7 +90,7 @@ class SubmilliluxReal():
         noisy = th.from_numpy(noisy)
 
         # -- meta info --
-        frame_nums = self.paths['fnums'][group]
+        frame_nums = th.IntTensor(self.paths['fnums'][group])
 
         # -- limit frame --
         if not(self.crop is None):
@@ -88,8 +99,17 @@ class SubmilliluxReal():
         # -- manage flow and output --
         index_th = th.IntTensor([image_index])
 
-        return {'noisy':noisy,'index':index_th,
-                'fnums':frame_nums,
+        # -- cropping --
+        region = th.IntTensor([])
+        use_region = "region" in self.cropmode or "coords" in self.cropmode
+        if use_region:
+            region = crop_vid(noisy,self.cropmode,self.isize,self.region_temp)
+        else:
+            noisy = crop_vid(noisy,self.cropmode,self.isize,self.region_temp)
+        clean = th.zeros_like(noisy)
+
+        return {'noisy':noisy,'index':index_th,"clean":clean,
+                'fnums':frame_nums,'region':region,
                 'rng_state':rng_state}
 
 #
@@ -114,30 +134,17 @@ def load(cfg):
 
     # -- set-up --
     modes = ['tr','val','te']
-
-    # -- frames --
-    def_nframes = optional(cfg,"nframes",0)
-    nframes = edict()
-    for mode in modes:
-        nframes[mode] = optional(cfg,"%s_nframes"%mode,def_nframes)
-
-    # -- fskip [amount of overlap for subbursts] --
-    def_fskip = optional(cfg,"fskip",1)
-    fskip = edict()
-    for mode in modes:
-        fskip[mode] = optional(cfg,"%s_fskip"%mode,def_fskip)
-
-    # -- frame sizes --
-    def_isize = optional(cfg,"isize",None)
-    isizes = edict()
-    for mode in modes:
-        isizes[mode] = get_isize(optional(cfg,"%s_isize"%mode,def_isize))
-
-    # -- samples --
-    def_nsamples = optional(cfg,"nsamples",-1)
-    nsamples = edict()
-    for mode in modes:
-        nsamples[mode] = optional(cfg,"%s_nsamples"%mode,def_nsamples)
+    fields = {"batch_size":1,
+              "nsamples":-1,
+              "isize":None,
+              "fstride":1,
+              "nframes":0,
+              "fskip":1,
+              "bw":False,
+              "index_skip":1,
+              "rand_order":False,
+              "cropmode":"region"}
+    p = parse_cfg(cfg,modes,fields)
 
     # -- setup paths --
     iroot = IMAGE_PATH
@@ -146,15 +153,17 @@ def load(cfg):
     # -- create objcs --
     data = edict()
     data.tr = SubmilliluxReal(iroot,sroot,"train",noise_info,
-                              nsamples.tr,nframes.tr,fskip.tr,isizes.tr)
+                              p.nsamples.tr,p.nframes.tr,p.fskip.tr,p.isize.tr,
+                              p.cropmode.tr)
     data.val = SubmilliluxReal(iroot,sroot,"val",noise_info,
-                               nsamples.val,nframes.val,fskip.val,isizes.val)
+                               p.nsamples.val,p.nframes.val,p.fskip.val,p.isize.val,
+                               p.cropmode.val)
     data.te = SubmilliluxReal(iroot,sroot,"test",noise_info,
-                              nsamples.te,nframes.te,fskip.te,isizes.te)
+                              p.nsamples.te,p.nframes.te,p.fskip.te,p.isize.te,
+                              p.cropmode.te)
 
     # -- create loader --
-    batch_size = optional(cfg,'batch_size',1)
-    loader = get_loaders(cfg,data,batch_size)
+    loader = get_loaders(cfg,data,p.batch_size)
 
     return data,loader
 

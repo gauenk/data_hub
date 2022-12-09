@@ -1,5 +1,6 @@
 # -- python imports --
 import uuid,time
+import torch as th
 import numpy as np
 from joblib import Parallel, delayed
 from functools import partial
@@ -11,6 +12,12 @@ import torch.nn.functional as F
 from torchvision import transforms as thT
 import torchvision.transforms.functional as tvF
 import torchvision.utils as tvUtils
+
+# -- submillilux noise --
+try:
+    import stardeno
+except:
+    pass
 
 # -- project imports --
 # from pyutils.timer import Timer
@@ -93,8 +100,8 @@ class AddLowLightNoiseBW(object):
     def __call__(self,pic):
         """
         :params pic: input image shaped [...,C,H,W]
-        
-        we assume C = 3 and then we convert it to BW. 
+
+        we assume C = 3 and then we convert it to BW.
         """
         # if pic.max() <= 1: pic *= 255.
         # print("noise",torch.get_rng_state())
@@ -180,33 +187,27 @@ class AddGaussianNoiseSet(object):
         return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
 
 
-class AddGaussianNoiseSetN2N(object):
+class AddMultiScaleGaussianNoise(object):
 
-    def __init__(self, N, train_stddev_rng_range=(0,50.)):
-        self.N = N
-        self.train_stddev_rng_range = train_stddev_rng_range
+    def __init__(self, sigma_min, sigma_max):
+        self.sigma_min = torch.tensor([sigma_min])
+        self.sigma_max = torch.tensor([sigma_max])
+        Uniform = torch.distributions.uniform.Uniform
+        self.unif = Uniform(self.sigma_min,self.sigma_max)
 
     def __call__(self, tensor):
 
-        shape = (self.N,) + tensor.shape
+        # -- sample noise intensity --
+        sigma = self.unif.sample().item()
 
-        # get noise term
-        (minv,maxv) = self.train_stddev_rng_range
-        rnoises = th_uniform(minv/255,maxv/255.,self.N).to(tensor.device)
-        for i in range(len(shape)-1): rnoises = rnoises.unsqueeze(1)
-        rnoises = rnoises.expand(shape)
-
-        # get means
-        means = tensor.expand(shape)
-
-        # simulate noise
-        pics = torch.normal(means,rnoises)
-
-        return pics
+        # -- sample noise --
+        pic = torch.normal(tensor,sigma)
+        return pic
 
     def __repr__(self):
-        rng = self.train_stddev_rng_range
-        return self.__class__.__name__ + '({})'.format(rng)
+        smin = self.sigma_min.item()
+        smax = self.sigma_max.item()
+        return self.__class__.__name__ + ' ({%2.2f,%2.2f})'.format(smin,max)
 
 class GaussianBlur:
 
@@ -289,8 +290,21 @@ class BlockGaussian:
             pics.append(pic_n)
         return pics
 
+class Submillilux:
 
+    def __init__(self,device="cuda:1"):
+        self.device = device
+        self.gan = stardeno.load_noise_sim(device,True).to(device)
 
+    def __call__(self,vid):
+        assert vid.shape[-3] in [3,4],"three or four color channels."
+        if vid.shape[-3] == 3:
+            empty = th.zeros_like(vid[...,[0],:,:])
+            vid = th.cat([vid,empty],-3)
+        with th.no_grad():
+            vid = self.gan(vid.to(self.device)).cpu()
+        vid = vid[...,:3,:,:].contiguous()
+        return vid
 
 class ScaleZeroMean:
 

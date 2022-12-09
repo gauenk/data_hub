@@ -16,13 +16,17 @@ def read_video_in_dir(ipath,nframes,ext="png"):
     vid = np.stack(vid)
     return vid
 
-def read_video(paths):
+def read_video(paths,bw=False):
     vid = []
     for path_t in paths:
         if not path_t.exists(): break
-        vid_t = Image.open(str(path_t)).convert("RGB")
-        vid_t = (np.array(vid_t)*1.).astype(np.float32)
-        vid_t = rearrange(vid_t,'h w c -> c h w')
+        if bw:
+            vid_t = Image.open(str(path_t)).convert("L")
+            vid_t = rearrange(np.array(vid_t),'h w -> 1 h w')
+        else:
+            vid_t = Image.open(str(path_t)).convert("RGB")
+            vid_t = rearrange(np.array(vid_t),'h w c -> c h w')
+        vid_t = (vid_t*1.).astype(np.float32)
         vid.append(vid_t)
     vid = np.stack(vid).astype(np.float32)
     vid = th.from_numpy(vid)
@@ -51,25 +55,33 @@ def get_video_paths(vid_dir):
         gt_paths.append(gt_t)
     return noisy_paths,gt_paths
 
-def read_files(iroot,sroot,ds_split,nframes):
+def read_files(iroot,sroot,ds_split,nframes,dil=1,stride=1):
 
     # -- get vid names in set --
     split_fn = sroot / ("%s.txt" % ds_split)
     vid_names = get_vid_names(split_fn)
 
     # -- get files --
-    files = {'images':{}}
+    files = {'images':{},"fnums":{}}
     for vid_name in vid_names:
         vid_dir = iroot/vid_name
         noisy_paths,gt_paths = get_video_paths(vid_dir)
         total_nframes = len(noisy_paths)
         assert total_nframes > 0
+        frame_nums = np.arange(len(noisy_paths))
 
         # -- pick number of sub frames --
-        if nframes > 0:
-            n_subvids = max(total_nframes - nframes,1)
-        else:
-            n_subvids = 1
+        nframes_vid = nframes
+        if nframes_vid <= 0:
+              nframes_vid = total_nframes
+
+        # -- compute num subframes --
+        n_subvids = (total_nframes - (nframes_vid-1)*dil - 1)//stride + 1
+
+        # -- reflect bound --
+        def bnd(num,lim):
+            if num >= lim: return 2*(lim-1)-num
+            else: return num
 
         for start_t in range(n_subvids):
             vid_id = "%s_%d" % (vid_name,start_t)
@@ -77,5 +89,9 @@ def read_files(iroot,sroot,ds_split,nframes):
             noisy_t = [noisy_paths[t%total_nframes] for t in range(start_t,end_t)]
             gt_t = [gt_paths[t%total_nframes] for t in range(start_t,end_t)]
             files['images'][vid_id] = [noisy_t,gt_t]
+
+            # -- extra --
+            fnums_t = [frame_nums[bnd(t,total_nframes)] for t in range(start_t,end_t)]
+            files['fnums'][vid_id] = fnums_t
 
     return files
