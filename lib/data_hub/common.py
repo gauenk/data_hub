@@ -77,7 +77,7 @@ def filter_subseq(data_sub,vid_name,frame_start=-1,frame_end=-1):
 
     # -- get initial indices --
     groups = data_sub.groups
-    indices = [i for i,g in enumerate(groups) if (vid_name == g.split("_")[0])]
+    indices = [i for i,g in enumerate(groups) if (vid_name == g.split(":")[0])]
 
     # -- optional filter --
     if frame_start >= 0 and frame_end > 0:
