@@ -68,7 +68,9 @@ def get_isize(isize):
         isize = [int(x) for x in isize.split("_")]
     return isize
 
-def filter_subseq(data_sub,vid_name,frame_start=-1,frame_end=-1):
+# def filter_subseq(data_sub,vid_name,frame_start=-1,frame_end=-1):
+
+def filter_subseq(data_sub,vid_name,frame_start=-1,nframes=1):
     """
     Filter a specific subsequence based on video name and frame indices.
 
@@ -80,7 +82,9 @@ def filter_subseq(data_sub,vid_name,frame_start=-1,frame_end=-1):
     indices = [i for i,g in enumerate(groups) if (vid_name == g.split(":")[0])]
 
     # -- optional filter --
-    if frame_start >= 0 and frame_end > 0:
+    if nframes > 0: frame_end = frame_start + nframes - 1
+    else: frame_end = -1
+    if frame_start >= 0 and frame_end >= 0:
         def fbnds(fnums,lb,ub): return (lb <= np.min(fnums)) and (ub >= np.max(fnums))
         indices = [i for i in indices if fbnds(data_sub.paths['fnums'][groups[i]],
                                                frame_start,frame_end)]
