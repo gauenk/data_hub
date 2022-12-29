@@ -51,7 +51,7 @@ def choose_noise_transform(noise_info, verbose=False):
         return get_msg_noise(noise_info)
     elif ntype == "msg_simcl":
         return get_msg_simcl_noise(noise_info)
-    elif ntype in ["submillilux","starlight"]:
+    elif ntype in ["submillilux","starlight","stardeno"]:
         return get_submillilux_noise(noise_info)
     elif ntype in ["none","clean"]:
         def null(image): return image
@@ -109,8 +109,8 @@ def get_msg_noise(params):
     return gaussian_msg
 
 def get_submillilux_noise(params):
-    ns = edict()
-    noise = Submillilux()
+    device = params['device']
+    noise = Submillilux(device)
     return noise
 
 # --------------------------------
@@ -127,18 +127,22 @@ def noise_from_cfg(cfg):
     # -- additional fields --
     if ntype == "g":
         fields = ["sigma"]
+        defs = [-1]
     elif ntype == "pn":
         fields = ["alpha"]
+        defs = [-1]
     elif ntype == "qis":
         fields = QIS.fields
-    elif ntype == "submillilux":
-        fields = []
+        defs = [-1,] * fields
+    elif ntype in ["submillilux","stardeno","starlight"]:
+        fields = ["device"]
+        defs = ["cuda:0"]
     else:
         raise ValueError(f"Uknown noisy type [{ntype}] for fields")
 
     # -- assignment --
-    for field in fields:
-        ns[field] = cfg[field]
+    for f,field in enumerate(fields):
+        ns[field] = optional(cfg,field,defs[f])
 
     return ns
 

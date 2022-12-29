@@ -69,6 +69,7 @@ def get_isize(isize):
     return isize
 
 # def filter_subseq(data_sub,vid_name,frame_start=-1,frame_end=-1):
+# def filter_subseq(data_sub,vid_name,frame_start=-1,nframes=1):
 
 def filter_subseq(data_sub,vid_name,frame_start=-1,nframes=1):
     """
