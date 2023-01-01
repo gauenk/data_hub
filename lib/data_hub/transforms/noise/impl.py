@@ -302,7 +302,7 @@ class Submillilux:
             empty = th.zeros_like(vid[...,[0],:,:])
             vid = th.cat([vid,empty],-3)
         with th.no_grad():
-            vid = self.gan(vid.to(self.device)).cpu()
+            vid = self.gan(vid.to(self.device)/255.).cpu()*255.
         vid = vid[...,:3,:,:].contiguous()
         return vid
 
