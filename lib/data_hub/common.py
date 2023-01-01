@@ -68,7 +68,16 @@ def get_isize(isize):
         isize = [int(x) for x in isize.split("_")]
     return isize
 
+def filter_nframes(data_sub,vid_name,frame_start=-1,nframes=0):
+    if nframes > 0: frame_end = frame_start + nframes - 1
+    else: frame_end = -1
+    return filter_eframe(data_sub,vid_name,frame_start,frame_end)
+
 def filter_subseq(data_sub,vid_name,frame_start=-1,frame_end=-1):
+    return filter_eframe(data_sub,vid_name,frame_start,frame_end)
+
+def filter_eframe(data_sub,vid_name,frame_start=-1,frame_end=-1):
+
     """
     Filter a specific subsequence based on video name and frame indices.
 
