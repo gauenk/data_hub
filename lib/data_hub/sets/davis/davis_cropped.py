@@ -166,7 +166,7 @@ def load(cfg):
     p = parse_cfg(cfg,modes,fields)
 
     # -- augmentations --
-    aug_flips = optional(cfg,"aug_training_flips",True)
+    aug_flips = optional(cfg,"aug_training_flips",False)
     flippy_augs = get_flippy_augs() if aug_flips else None
     aug_scales = optional(cfg,"aug_training_scales",None)
     scale_augs = get_scale_augs(aug_scales)
