@@ -306,6 +306,23 @@ class Submillilux:
         vid = vid[...,:3,:,:].contiguous()
         return vid
 
+class PoissonGaussianNoise:
+
+    def __init__(self, sigma, rate):
+        self.sigma = sigma
+        self.rate = rate
+
+    def __call__(self, tensor):
+        ratio = self.rate/255.
+        pic = torch.poisson(ratio*tensor)/ratio
+        pic = torch.normal(pic,self.sigma)
+        return pic
+
+    def __repr__(self):
+        msg = '(sigma={0},rate={1})'.format(self.sigma,self.rate)
+        return self.__class__.__name__ + msg
+    
+
 class ScaleZeroMean:
 
     def __init__(self):

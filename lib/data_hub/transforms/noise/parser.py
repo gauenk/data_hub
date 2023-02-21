@@ -8,7 +8,7 @@ from torchvision import transforms as tvT
 
 # -- project imports --
 from data_hub.common import optional
-from .impl import AddMultiScaleGaussianNoise,GaussianBlur,AddGaussianNoise,AddPoissonNoiseBW,AddLowLightNoiseBW,AddHeteroGaussianNoise,ScaleZeroMean,QIS,Submillilux
+from .impl import AddMultiScaleGaussianNoise,GaussianBlur,AddGaussianNoise,AddPoissonNoiseBW,AddLowLightNoiseBW,AddHeteroGaussianNoise,ScaleZeroMean,QIS,Submillilux,PoissonGaussianNoise
 
 __all__ = ['get_noise_transform']
 
@@ -39,12 +39,14 @@ def choose_noise_transform(noise_info, verbose=False):
     ntype = noise_info.ntype
     if ntype == "g":
         return get_g_noise(noise_info)
-    if ntype == "hg":
+    elif ntype == "hg":
         return get_hg_noise(noise_info)
     elif ntype == "ll":
         return get_ll_noise(noise_info)
     elif ntype == "pn":
         return get_pn_noise(noise_info)
+    elif ntype == "pg":
+        return get_pg_noise(noise_info)
     elif ntype == "qis":
         return get_qis_noise(noise_info)
     elif ntype == "msg":
@@ -88,6 +90,11 @@ def get_pn_noise(params):
     if std > 1: std /= 255. # rescale is necessary
     pn_noise = AddLowLightNoiseBW(alpha,std,-1,False)
     return pn_noise
+
+def get_pg_noise(params):
+    sigma,rate = params['sigma'],params['rate']
+    noise = PoissonGaussianNoise(sigma,rate)
+    return noise
 
 def get_qis_noise(params):
     # alpha,readout = params['alpha'],params['readout']
