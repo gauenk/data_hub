@@ -32,7 +32,8 @@ class Set8():
 
     def __init__(self,iroot,sroot,split,noise_info,
                  nsamples=0,nframes=0,fstride=1,isize=None,bw=False,
-                 cropmode="coords",rand_order=False,index_skip=1):
+                 cropmode="coords",rand_order=False,index_skip=1,
+                 noise_once=False):
 
         # -- set init params --
         self.iroot = iroot
@@ -63,8 +64,8 @@ class Set8():
         self.nsamples = len(self.indices)
 
         # -- repro --
-        self.noise_once = optional(noise_info,"sim_once",False)
-        # self.fixRandNoise_1 = RandomOnce(self.noise_once,self.nsamples)
+        self.noise_once = noise_once
+        self.random_once = RandomOnce(self.noise_once,self.nsamples)
 
     def __len__(self):
         return self.nsamples
@@ -103,6 +104,7 @@ class Set8():
             clean = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
 
         # -- get noise --
+        # with self.random_once.set_state(index):
         # with self.fixRandNoise_1.set_state(index):
         noisy = self.noise_trans(clean)
 
@@ -140,7 +142,8 @@ def load(cfg):
               "bw":False,
               "index_skip":1,
               "rand_order":False,
-              "cropmode":"center"}
+              "cropmode":"center",
+              "noise_once":False}
     p = parse_cfg(cfg,modes,fields)
 
     # -- setup paths --
