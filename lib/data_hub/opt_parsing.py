@@ -8,14 +8,13 @@ from easydict import EasyDict as edict
 from .common import optional,get_isize
 
 def parse_cfg(cfg,modes,fields):
-    parse = edict()
+    parse = edict({m:edict() for m in modes})
     for field,default in fields.items():
         def_field = optional(cfg,field,default)
         def_field = default_xform(field,def_field)
-        parse[field] = edict()
         for mode in modes:
             val = optional(cfg,"%s_%s"%(field,mode),def_field)
-            parse[field][mode] = post_xform(field,val)
+            parse[mode][field] = post_xform(field,val)
     return parse
 
 def default_xform(field,default):

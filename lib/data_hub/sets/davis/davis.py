@@ -143,7 +143,8 @@ def load(cfg):
               "index_skip":1,
               "rand_order":False,
               "cropmode":"center",
-              "num_workers":2}
+              "num_workers":2,
+              "read_flow":False}
     p = parse_cfg(cfg,modes,fields)
 
     # -- setup paths --

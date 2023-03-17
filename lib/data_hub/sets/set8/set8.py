@@ -26,26 +26,28 @@ from data_hub.cropping import crop_vid
 
 # -- local imports --
 from .paths import IMAGE_PATH,IMAGE_SETS
-from .reader import read_files,read_video
+from .reader import read_files,read_video,read_flows
 
 class Set8():
 
-    def __init__(self,iroot,sroot,split,noise_info,
-                 nsamples=0,nframes=0,fstride=1,isize=None,bw=False,
-                 cropmode="coords",rand_order=False,index_skip=1):
+    def __init__(self,iroot,sroot,split,noise_info,params):
 
         # -- set init params --
         self.iroot = iroot
         self.sroot = sroot
         self.split = split
-        self.nframes = nframes
-        self.isize = isize
-        self.bw = bw
+        self.nframes = params.nframes
+        self.isize = params.isize
+        self.bw = params.bw
+        self.read_flows = params.read_flows
+        self.seed = params.seed
+        self.noise_info = noise_info
 
         # -- manage cropping --
+        isize = params.isize
         isize_is_none = isize is None or isize == "none"
         self.crop = isize
-        self.cropmode = cropmode if not(isize_is_none) else "none"
+        self.cropmode = params.cropmode if not(isize_is_none) else "none"
         self.rand_crop,self.region_temp = None,None
         if not(isize_is_none):
             self.rand_crop = RandomCrop(isize)
@@ -55,11 +57,11 @@ class Set8():
         self.noise_trans = get_noise_transform(noise_info,noise_only=True)
 
         # -- load paths --
-        self.paths = read_files(iroot,sroot,split,nframes,fstride)
+        self.paths = read_files(iroot,sroot,split,params.nframes,params.fstride)
         self.groups = sorted(list(self.paths['images'].keys()))
 
         # -- limit num of samples --
-        self.indices = enumerate_indices(len(self.paths['images']),nsamples)
+        self.indices = enumerate_indices(len(self.paths['images']),params.nsamples)
         self.nsamples = len(self.indices)
 
         # -- repro --
@@ -106,11 +108,15 @@ class Set8():
         # with self.fixRandNoise_1.set_state(index):
         noisy = self.noise_trans(clean)
 
-        # -- manage flow and output --
+        # -- image index in expanded dataset [with crops] --
         index_th = th.IntTensor([image_index])
 
+        # -- flow io --
+        fflow,bflow = read_flows(self.read_flows,group,self.noise_info,self.seed)
+
         return {'noisy':noisy,'clean':clean,'index':index_th,
-                'fnums':frame_nums,'region':region,'rng_state':rng_state}
+                'fnums':frame_nums,'region':region,'rng_state':rng_state,
+                'fflow':fflow,'bflow':bflow}
 
 #
 # Loading the datasets in a project
@@ -140,7 +146,10 @@ def load(cfg):
               "bw":False,
               "index_skip":1,
               "rand_order":False,
-              "cropmode":"center"}
+              "cropmode":"center",
+              "num_workers":2,
+              "read_flows":False,
+              "seed":123}
     p = parse_cfg(cfg,modes,fields)
 
     # -- setup paths --
@@ -149,18 +158,22 @@ def load(cfg):
 
     # -- create objcs --
     data = edict()
-    data.tr = Set8(iroot,sroot,"train",noise_info,p.nsamples.tr,
-                   p.nframes.tr,p.fstride.tr,p.isize.tr,p.bw.tr,p.cropmode.tr,
-                   p.rand_order.tr,p.index_skip.tr)
-    data.val = Set8(iroot,sroot,"val",noise_info,p.nsamples.val,
-                    p.nframes.val,p.fstride.val,p.isize.val,p.bw.val,p.cropmode.val,
-                    p.rand_order.val,p.index_skip.val)
-    data.te = Set8(iroot,sroot,"test",noise_info,p.nsamples.te,
-                   p.nframes.te,p.fstride.te,p.isize.te,p.bw.te,p.cropmode.te,
-                   p.rand_order.te,p.index_skip.te)
+    data.tr = Set8(iroot,sroot,"train",noise_info,p.tr)
+    # p.nsamples.tr,
+    #                p.nframes.tr,p.fstride.tr,p.isize.tr,p.bw.tr,p.cropmode.tr,
+    #                p.rand_order.tr,p.index_skip.tr)
+    data.val = Set8(iroot,sroot,"val",noise_info,p.val)
+                    # p.nsamples.val,
+                    # p.nframes.val,p.fstride.val,p.isize.val,p.bw.val,p.cropmode.val,
+                    # p.rand_order.val,p.index_skip.val)
+    data.te = Set8(iroot,sroot,"test",noise_info,p.te)
+                   # p.nsamples.te,
+                   # p.nframes.te,p.fstride.te,p.isize.te,p.bw.te,p.cropmode.te,
+                   # p.rand_order.te,p.index_skip.te)
 
     # -- create loader --
-    loader = get_loaders(cfg,data,p.batch_size)
+    batch_size = edict({key:val['batch_size'] for key,val in p.items()})
+    loader = get_loaders(cfg,data,batch_size)
 
     return data,loader
 
