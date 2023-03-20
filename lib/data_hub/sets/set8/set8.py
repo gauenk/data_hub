@@ -65,8 +65,8 @@ class Set8():
         self.nsamples = len(self.indices)
 
         # -- repro --
-        self.noise_once = optional(noise_info,"sim_once",False)
-        # self.fixRandNoise_1 = RandomOnce(self.noise_once,self.nsamples)
+        self.noise_once = params.noise_once
+        self.random_once = RandomOnce(self.noise_once,self.nsamples)
 
     def __len__(self):
         return self.nsamples
@@ -105,6 +105,7 @@ class Set8():
             clean = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
 
         # -- get noise --
+        # with self.random_once.set_state(index):
         # with self.fixRandNoise_1.set_state(index):
         noisy = self.noise_trans(clean)
 
@@ -147,6 +148,7 @@ def load(cfg):
               "index_skip":1,
               "rand_order":False,
               "cropmode":"center",
+              "noise_once":False,
               "num_workers":2,
               "read_flows":False,
               "seed":123}

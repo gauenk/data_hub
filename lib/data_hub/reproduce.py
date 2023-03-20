@@ -97,6 +97,7 @@ class RandomOnce():
 
             # -- get fixed state --
             new_state = self.states[self.index]
+            # print(new_state)
 
             # -- set to fixed state --
             set_random_state(new_state)

@@ -1,4 +1,5 @@
 
+import torch as th
 import numpy as np
 from PIL import Image
 from einops import rearrange,repeat
@@ -43,6 +44,26 @@ def get_vid_names(vid_fn):
         names = f.readlines()
     names = [name.strip() for name in names]
     return names
+
+def read_flows(read_bool,vid_name,noise_info,seed):
+    if not(read_bool):
+        return th.FloatTensor([]),th.FloatTensor([])
+    file_stem = read_flow_base(noise_info,seed)
+    path = FLOW_BASE / vid_name / file_stem
+    # print(path)
+    flows = np.load(path)
+    fflow = th.Tensor(flows['fflow']).type(th.float)
+    bflow = th.Tensor(flows['bflow']).type(th.float)
+    return fflow,bflow
+
+def read_flow_base(noise_info,seed):
+    ntype = noise_info.ntype
+    if ntype == "g":
+        return "g-%d_seed-%d.npz" % (noise_info.sigma,seed)
+    elif ntype == "pg":
+        return "pg-%d-%d_seed-%d.npz" % (noise_info.sigma,noise_info.rate,seed)
+    else:
+        raise ValueError("Uknown noise type to reading pre-computed optical flow.")
 
 def read_files(iroot,sroot,ds_split,nframes,stride,ext="png"):
     """
