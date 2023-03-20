@@ -51,7 +51,7 @@ class Set8():
         self.rand_crop,self.region_temp = None,None
         if not(isize_is_none):
             self.rand_crop = RandomCrop(isize)
-            self.region_temp = "%d_%d_%d" % (nframes,isize[0],isize[1])
+            self.region_temp = "%d_%d_%d" % (params.nframes,isize[0],isize[1])
 
         # -- create transforms --
         self.noise_trans = get_noise_transform(noise_info,noise_only=True)
