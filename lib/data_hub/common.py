@@ -96,3 +96,19 @@ def filter_eframe(data_sub,vid_name,frame_start=-1,frame_end=-1):
     return indices
 
 
+def get_sample_pair(data_sub,vid_name,nframes,frame_start=0,
+                    frame_end=-1,device="cuda:0"):
+
+    # -- get indices --
+    if frame_end < 0: frame_end = frame_start + nframes - 1
+    indices = filter_eframe(data_sub,vid_name,frame_start,frame_end)
+    index = indices[0]
+
+    # -- unpack --
+    sample = data_sub[index]
+    noisy,clean = sample['noisy'][None,],sample['clean'][None,]
+    noisy,clean = noisy.to(device),clean.to(device)
+
+    return noisy,clean
+
+
