@@ -3,6 +3,7 @@ import torch as th
 import numpy as np
 from PIL import Image
 from einops import rearrange,repeat
+from .paths import FLOW_BASE # why not other paths? I think we can do it when time
 
 def read_video_in_dir(ipath,nframes,ext="png"):
     vid = []
@@ -50,7 +51,6 @@ def read_flows(read_bool,vid_name,noise_info,seed):
         return th.FloatTensor([]),th.FloatTensor([])
     file_stem = read_flow_base(noise_info,seed)
     path = FLOW_BASE / vid_name / file_stem
-    # print(path)
     flows = np.load(path)
     fflow = th.Tensor(flows['fflow']).type(th.float)
     bflow = th.Tensor(flows['bflow']).type(th.float)

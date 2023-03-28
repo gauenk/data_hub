@@ -5,6 +5,7 @@ from PIL import Image
 from pathlib import Path
 from easydict import EasyDict as edict
 from einops import rearrange,repeat
+from .paths import FLOW_BASE # why not other paths? I think we can do it when time
 
 # def read_data(paths_clean,bw=False):
 
@@ -77,7 +78,8 @@ def read_names(iroot,sroot,nframes,ds_split,ext="png"):
         name = str(dname.stem)
         base_name = name.split("_")[0]
         if not(base_name in split_names): continue
-        tframes = len(list((iroot / name).iterdir()))
+        base_dir = iroot / name
+        tframes = len(list(p for p in base_dir.iterdir() if p.suffix in [".png"]))
         nsubs = tframes - nframes + 1
         assert nsubs > 0
         for sub in range(nsubs):
@@ -92,7 +94,11 @@ def read_data(name_s,iroot,nframes,bw=False):
     fstart = int(fstart)
 
     # -- load clean --
-    paths = sorted(list((iroot / "train" / name).iterdir()))
+    base = iroot / "train" / name
+    tmp = list(base.iterdir())
+    crop_info = [p.stem for p in base.iterdir() if "crop" in p.stem][0]
+    paths = sorted(list(p for p in base.iterdir() if p.suffix in [".png",".jpeg"]))
+    # print(fstart,nframes,len(paths))
     paths = [paths[ti] for ti in range(fstart,fstart+nframes)]
     clean = read_video(paths,bw=bw)
 
@@ -103,5 +109,69 @@ def read_data(name_s,iroot,nframes,bw=False):
         fnums.append(fnum)
     fnums = th.from_numpy(np.array(fnums))
 
-    return clean,fnums
+    # -- top-left corner --
+    fstart,fend,top,left = crop_info.split("_")[1:]
+    fstart,fend = fnums[0].item(),fnums[-1].item()
+    loc = [fstart,fend,top,left]
+    loc = [int(x) for x in loc]
+
+    return clean,fnums,loc
+
+
+# -=-=-=-=-=-=-=-=-=-=-=-
+#
+#      Read Flows
+#
+# -=-=-=-=-=-=-=-=-=-=-=-
+
+def read_flows(read_bool,vid_name,noise_info,seed,loc,isize):
+
+    # -- no read --
+    if not(read_bool):
+        return th.FloatTensor([]),th.FloatTensor([])
+    og_vid_name = vid_name
+    vid_name = "_".join(vid_name.split("+")[0].split("_")[:-2])
+
+    # -- read --
+    fflow,bflow = read_flow_mmap(vid_name,noise_info,seed)
+
+    # -- region --
+    t_start,t_end,h_start,w_start = loc
+    h_size,w_size = isize[0],isize[1]
+    h_end,w_end = h_start+h_size,w_start+w_size
+
+    # -- crop --
+    og_fflow_shape = fflow.shape
+    fflow = fflow[t_start:t_end+1,:,h_start:h_end,w_start:w_end]
+    bflow = bflow[t_start:t_end+1,:,h_start:h_end,w_start:w_end]
+
+    # -- to torch --
+    fflow = th.from_numpy(fflow.copy()).type(th.float32)
+    bflow = th.from_numpy(bflow.copy()).type(th.float32)
+    # print(loc,og_vid_name,og_fflow_shape,fflow.shape)
+
+    # -- temporal edges --
+    fflow[-1] = 0
+    bflow[0] = 0
+
+    return fflow,bflow
+
+def read_flow_mmap(vid_name,noise_info,seed):
+    # -- read flow --
+    file_stem = read_flow_base(noise_info,seed)
+    fflow_fn = FLOW_BASE / vid_name / ("%s_fflow.npy" % file_stem)
+    bflow_fn = FLOW_BASE / vid_name / ("%s_bflow.npy" % file_stem)
+    fflow = np.load(fflow_fn,mmap_mode="r")
+    bflow = np.load(bflow_fn,mmap_mode="r")
+    return fflow,bflow
+
+def read_flow_base(noise_info,seed):
+    ntype = noise_info.ntype
+    if ntype == "g":
+        return "g-%d_seed-%d" % (noise_info.sigma,seed)
+    elif ntype == "pg":
+        return "pg-%d-%d_seed-%d" % (noise_info.sigma,noise_info.rate,seed)
+    else:
+        raise ValueError("Uknown noise type to reading pre-computed optical flow.")
+
 
