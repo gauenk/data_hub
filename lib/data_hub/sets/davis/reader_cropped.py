@@ -112,7 +112,7 @@ def read_data(name_s,iroot,nframes,bw=False):
     # -- top-left corner --
     fstart,fend,top,left = crop_info.split("_")[1:]
     fstart,fend = fnums[0].item(),fnums[-1].item()
-    loc = [fstart,fend,top,left]
+    loc = [fstart,fend+1,top,left]
     loc = [int(x) for x in loc]
 
     return clean,fnums,loc

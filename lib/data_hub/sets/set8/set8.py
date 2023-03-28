@@ -23,10 +23,11 @@ from data_hub.reproduce import RandomOnce,get_random_state,enumerate_indices
 from data_hub.opt_parsing import parse_cfg
 # from data_hub.cropping import apply_sobel_filter,sample_sobel_region,sample_rand_region,get_center_region
 from data_hub.cropping import crop_vid
+from data_hub.read_flow import read_flows
 
 # -- local imports --
 from .paths import IMAGE_PATH,IMAGE_SETS
-from .reader import read_files,read_video,read_flows
+from .reader import read_files,read_video
 
 class Set8():
 
@@ -96,13 +97,30 @@ class Set8():
         frame_nums = self.paths['fnums'][group]
         frame_nums = th.IntTensor(frame_nums)
 
+        # -- flow io --
+        isize = list(clean.shape[-2:])
+        loc = [0,len(clean),0,0]
+        fflow,bflow = read_flows(FLOW_BASE,self.read_flows,group,
+                                 self.noise_info,self.seed,loc,isize)
         # -- cropping --
         region = th.IntTensor([])
+        in_vids = [clean,fflow,bflow] if self.read_flows else [clean]
         use_region = "region" in self.cropmode or "coords" in self.cropmode
         if use_region:
             region = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
         else:
-            clean = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
+            in_vids = crop_vid(in_vids,self.cropmode,self.isize,self.region_temp)
+            clean = in_vids[0]
+            if self.read_flows:
+                fflow,bflow = in_vids[1],in_vids[2]
+
+        # # -- cropping --
+        # region = th.IntTensor([])
+        # use_region = "region" in self.cropmode or "coords" in self.cropmode
+        # if use_region:
+        #     region = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
+        # else:
+        #     clean = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
 
         # -- get noise --
         # with self.random_once.set_state(index):
@@ -111,9 +129,6 @@ class Set8():
 
         # -- image index in expanded dataset [with crops] --
         index_th = th.IntTensor([image_index])
-
-        # -- flow io --
-        fflow,bflow = read_flows(self.read_flows,group,self.noise_info,self.seed)
 
         return {'noisy':noisy,'clean':clean,'index':index_th,
                 'fnums':frame_nums,'region':region,'rng_state':rng_state,

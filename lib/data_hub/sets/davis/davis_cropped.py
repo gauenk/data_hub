@@ -26,12 +26,13 @@ from data_hub.opt_parsing import parse_cfg
 
 # -- local imports --
 from .paths import CROPPED_BASE as BASE
-from .paths import IMAGE_SETS
-from .reader_cropped import read_names,read_data,read_flows
+from .paths import IMAGE_SETS,FLOW_BASE
+from .reader_cropped import read_names,read_data
 
 # -- augmentations init --
 import random
 from data_hub.augmentations import get_scale_augs,get_flippy_augs
+from data_hub.read_flow import read_flows
 
 class DAVISCropped():
 
@@ -52,7 +53,6 @@ class DAVISCropped():
         self.read_flows = params.read_flows
         self.seed = params.seed
         self.noise_info = noise_info
-
 
         # -- manage cropping --
         isize = params.isize
@@ -109,8 +109,8 @@ class DAVISCropped():
         # print(self.names[image_index],self.groups[image_index])
 
         # -- load burst --
-        vid_name = self.names[image_index]
-        clean,frame_nums,loc = read_data(vid_name,self.iroot,self.nframes,self.bw)
+        subvid_name = self.names[image_index]
+        clean,frame_nums,loc = read_data(subvid_name,self.iroot,self.nframes,self.bw)
 
         # -- augmentations --
         if self.nscale_augs > 0:
@@ -124,12 +124,13 @@ class DAVISCropped():
 
         # -- flow io --
         size = list(clean.shape[-2:])
-        fflow,bflow = read_flows(self.read_flows,vid_name,
+        vid_name = "_".join(subvid_name.split("+")[0].split("_")[:-2])
+        fflow,bflow = read_flows(FLOW_BASE,self.read_flows,vid_name,
                                  self.noise_info,self.seed,loc,size)
 
         # -- cropping --
-        in_vids = [clean,fflow,bflow] if self.read_flows else [clean]
         region = th.IntTensor([])
+        in_vids = [clean,fflow,bflow] if self.read_flows else [clean]
         use_region = "region" in self.cropmode or "coords" in self.cropmode
         if use_region:
             region = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
@@ -137,7 +138,7 @@ class DAVISCropped():
             in_vids = crop_vid(in_vids,self.cropmode,self.isize,self.region_temp)
             clean = in_vids[0]
             if self.read_flows:
-                fflow,bflow = in_vids[0],in_vids[1]
+                fflow,bflow = in_vids[1],in_vids[2]
 
         # -- get noise --
         # with self.fixRandNoise_1.set_state(index):
