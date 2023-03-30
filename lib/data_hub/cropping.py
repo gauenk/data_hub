@@ -34,10 +34,10 @@ def crop_vid(vid,cropmode,isize,region_temp):
         region = th.IntTensor(region)
         rtn = region
     elif cropmode in ["sobel"]:
-        sobel_vid = apply_sobel_filter(vid)
+        sobel_vid = apply_sobel_filter(vid[0])
         region = sample_sobel_region(sobel_vid,region_temp)
         region = th.IntTensor(region)
-        vid_cc = rslice(vid,region)
+        vid_cc = [rslice(vid[l],region) for l in range(len(vid))]
         rtn = vid_cc
     elif cropmode in ["coords_rand","region_rand"]:
         vshape = vid.shape

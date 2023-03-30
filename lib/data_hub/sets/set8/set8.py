@@ -26,7 +26,7 @@ from data_hub.cropping import crop_vid
 from data_hub.read_flow import read_flows
 
 # -- local imports --
-from .paths import IMAGE_PATH,IMAGE_SETS
+from .paths import IMAGE_PATH,IMAGE_SETS,FLOW_BASE
 from .reader import read_files,read_video
 
 class Set8():
@@ -98,9 +98,10 @@ class Set8():
         frame_nums = th.IntTensor(frame_nums)
 
         # -- flow io --
+        vid_name = group.split(":")[0]
         isize = list(clean.shape[-2:])
         loc = [0,len(clean),0,0]
-        fflow,bflow = read_flows(FLOW_BASE,self.read_flows,group,
+        fflow,bflow = read_flows(FLOW_BASE,self.read_flows,vid_name,
                                  self.noise_info,self.seed,loc,isize)
         # -- cropping --
         region = th.IntTensor([])
