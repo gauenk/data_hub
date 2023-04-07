@@ -15,8 +15,10 @@ from einops import rearrange,repeat
 def read_flows(FLOW_BASE,read_bool,vid_name,noise_info,seed,loc,isize):
 
     # -- no read --
+    print(read_bool)
     if not(read_bool):
         return th.FloatTensor([]),th.FloatTensor([])
+    print("hi.")
 
     # -- read --
     fflow,bflow = read_flow_mmap(FLOW_BASE,vid_name,noise_info,seed)
@@ -55,7 +57,8 @@ def read_flow_base(noise_info,seed):
     if ntype == "g":
         return "g-%d_seed-%d" % (noise_info.sigma,seed)
     elif ntype == "pg":
-        return "pg-%d-%d_seed-%d" % (noise_info.sigma,noise_info.rate,seed)
+        return "pg-%d_seed-%d" % (noise_info.rate,seed)
+        # return "pg-%d-%d_seed-%d" % (noise_info.sigma,noise_info.rate,seed)
     else:
         raise ValueError("Uknown noise type to reading pre-computed optical flow.")
 
