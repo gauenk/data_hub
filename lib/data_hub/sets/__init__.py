@@ -19,13 +19,20 @@ from . import div2k
 from . import urban100
 from . import set12
 
+# -- segmentation --
+from . import coco
+
 # -- misc --
 from data_hub.common import optional
 
 def load(cfg):
     dname = optional(cfg,"dname","toy64")
-    set_loaders = {"toy64":toy64,"toy":toy,"iphone":iphone,
-                   "set8":set8,"sid":sid,
+    set_loaders = {"toy64":toy64,
+                   "toy":toy,
+                   "iphone":iphone,
+                   "set8":set8,
+                   "sid":sid,
+                   "coco":coco.coco,
                    "submillilux":submillilux,
                    "submillilux_real":submillilux.real,
                    "submillilux_paired":submillilux.paired,

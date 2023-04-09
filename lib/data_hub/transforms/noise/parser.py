@@ -37,7 +37,9 @@ def get_noise_transform(noise_info,noise_only=False,
 def choose_noise_transform(noise_info, verbose=False):
     if verbose: print("[data_hub/transforms/parse_noise_info.py]: ",noise_info)
     ntype = noise_info.ntype
-    if ntype == "g":
+    if ntype == None:
+        return get_none_noise()
+    elif ntype == "g":
         return get_g_noise(noise_info)
     elif ntype == "hg":
         return get_hg_noise(noise_info)
@@ -60,6 +62,15 @@ def choose_noise_transform(noise_info, verbose=False):
         return null
     else:
         raise ValueError(f"Unknown noise_type [{ntype}]")
+
+def get_none_noise():
+    class NoneNoise():
+        def __init__(self):
+            pass
+        def forward(self,vid):
+            return vid
+    none_noise = NoneNoise
+    return none_noise
 
 def get_g_noise(params):
     """
@@ -132,7 +143,10 @@ def noise_from_cfg(cfg):
     ntype = optional(cfg,'ntype','g')
     ns.ntype = ntype
     # -- additional fields --
-    if ntype == "g":
+    if ntype is None or ntype == "None" or ntype == "none":
+        fields = []
+        defs = []
+    elif ntype == "g":
         fields = ["sigma"]
         defs = [-1]
     elif ntype == "pn":
@@ -157,7 +171,9 @@ def noise_from_cfg(cfg):
     return ns
 
 def get_noise_config(name):
-    if name.split("-")[0] == "g": # gaussian
+    if name is None:
+        return {"ntype":"none"}
+    elif name.split("-")[0] == "g": # gaussian
         config = get_gaussian_config_from_name(name)
     elif name.split("-")[0] == "pn":
         config = get_poisson_config_from_name(name)
