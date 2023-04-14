@@ -5,7 +5,7 @@ The YouTubeVOC dataset
 """
 
 # -- python imports --
-import pdb
+import pdb,json
 import numpy as np
 from pathlib import Path
 from einops import rearrange,repeat
@@ -32,7 +32,7 @@ from data_hub.read_flow import read_flows
 # -- local imports --
 from .paths import BASE,FLOW_PATH
 from .reader import read_files,read_video,read_annos
-
+from .formats import _files_to_dict
 
 class YouTubeVOC():
 
@@ -72,6 +72,10 @@ class YouTubeVOC():
                                          params.rand_order,params.index_skip)
         self.nsamples = len(self.indices)
 
+        # -- read meta-data --
+        with open(root/split/"meta.json","r") as f:
+            self.meta = json.load(f)
+
         # -- repro --
         self.noise_once = optional(noise_info,"sim_once",False)
         # self.fixRandNoise_1 = RandomOnce(self.noise_once,self.nsamples)
@@ -94,12 +98,22 @@ class YouTubeVOC():
         # -- indices --
         image_index = self.indices[index]
         group = self.groups[image_index]
+        vid_name = group
+        if ":" in group:
+            vid_name = group.split(":")[0]
 
         # -- load burst --
         vid_files = self.paths['images'][group]
         clean = read_video(vid_files,self.bw)
         clean = th.from_numpy(clean)
-        annos = read_annos(vid_files)
+        insts,insts_exists = read_annos(vid_files)
+
+        # -- read meta-data --
+        labels = self.meta['videos'][vid_name]
+
+        # -- convert --
+        annos = _files_to_dict(insts,labels)
+        print(annos)
 
         # -- flow io --
         vid_name = group.split(":")[0]
@@ -110,13 +124,13 @@ class YouTubeVOC():
 
         # -- cropping --
         region = th.IntTensor([])
-        in_vids = [clean,annos,fflow,bflow] if self.read_flows else [clean,annos]
+        in_vids = [clean,insts,fflow,bflow] if self.read_flows else [clean,insts]
         use_region = "region" in self.cropmode or "coords" in self.cropmode
         if use_region:
             region = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
         else:
             in_vids = crop_vid(in_vids,self.cropmode,self.isize,self.region_temp)
-            clean,annos = in_vids[0],in_vids[1]
+            clean,insts = in_vids[0],in_vids[1]
             if self.read_flows:
                 fflow,bflow = in_vids[1],in_vids[2]
 
@@ -130,7 +144,8 @@ class YouTubeVOC():
 
         return {'noisy':noisy,'clean':clean,'index':index_th,
                 'fnums':frame_nums,'region':region,'rng_state':rng_state,
-                'fflow':fflow,'bflow':bflow,"annos":annos}
+                'fflow':fflow,'bflow':bflow,"insts":insts,"insts_exists":insts_exists,
+                "labels":labels}
 
 #
 # Loading the datasets in a project

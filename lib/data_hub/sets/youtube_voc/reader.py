@@ -21,7 +21,6 @@ import numpy as np
 
 def read_video(paths,bw=False):
     vid = []
-    print(len(paths))
     for path_t in paths:
         if not Path(path_t).exists(): break
         vid_t = Image.open(path_t)
@@ -33,16 +32,21 @@ def read_video(paths,bw=False):
     vid = np.stack(vid).astype(np.float32)
     return vid
 
-def read_annos(ipaths):
-    annos = []
-    for ipath in ipaths:
-        apath = Path(str(ipath).replace("JPEGImages","Annotations"))
-        apath = str(apath.parent / apath.name.replace("jpg","png"))
-        anno_img = np.array(Image.open(apath))
+def read_annos(apaths):
+    annos,exists = [],[]
+    for apath in apaths:
+        if not apath.exists():
+            annos.append(th.zeros_like(annos[0]))
+            exists.append(0)
+            continue
+        anno_img = np.array(Image.open(str(apath)))
         anno_img = th.from_numpy(anno_img)
         annos.append(anno_img)
+        exists.append(1)
     annos = th.stack(annos)
-    return annos
+    exists = th.BoolTensor(exists)
+    return annos,exists
+
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 #
@@ -54,6 +58,14 @@ def get_video_paths(root,ext="jpg"):
     fns = sorted(list(root.iterdir()))
     fnums = [int(f.stem) for f in fns]
     return fns,fnums
+
+def read_anno_paths(ipaths):
+    apaths = []
+    for ipath in ipaths:
+        apath = Path(str(ipath).replace("JPEGImages","Annotations"))
+        apath = apath.parent / apath.name.replace("jpg","png")
+        apaths.append(apath)
+    return apaths
 
 def read_files(root,split,nframes,stride,ext="jpg",reset=False):
 
@@ -74,13 +86,17 @@ def read_files(root,split,nframes,stride,ext="jpg",reset=False):
     vid_names = sorted([s.name for s in iroot.iterdir()])
 
     # -- get files --
-    files = {'images':{},"fnums":{}}
+    files = {'images':{},"annos":{},"fnums":{}}
     for vid_name in vid_names:
 
         # -- get video paths --
         vid_paths,frame_nums = get_video_paths(iroot/vid_name,ext)
+        anno_paths = read_anno_paths(vid_paths)
         total_nframes = len(vid_paths)
         assert total_nframes > 0
+
+        # -- for now... --
+        nframes = total_nframes
 
         # -- pick number of sub frames --
         nframes_vid = nframes
@@ -102,16 +118,19 @@ def read_files(root,split,nframes,stride,ext="jpg",reset=False):
             end_t = start_t + nframes_vid
 
             # -- unpack --
-            paths_t = [vid_paths[bnd(t,total_nframes)] for t in range(start_t,end_t)]
+            ipaths_t = [vid_paths[bnd(t,total_nframes)] for t in range(start_t,end_t)]
+            apaths_t = [anno_paths[bnd(t,total_nframes)] for t in range(start_t,end_t)]
             fnums_t = [frame_nums[bnd(t,total_nframes)] for t in range(start_t,end_t)]
 
             # -- append --
-            files['images'][vid_id] = paths_t
+            files['images'][vid_id] = ipaths_t
+            files['annos'][vid_id] = apaths_t
             files['fnums'][vid_id] = fnums_t
 
 
     # -- save cache --
-    cache.save_exp("0","0",{"paths":files})
+    cache.get_uuid({"0":"0"},uuid="0")
+    cache.save_exp("0",{"0":"0"},{"paths":files})
 
     return files
 
