@@ -9,6 +9,10 @@ from . import sidd
 from . import davis
 from . import gopro
 
+# -- video + segmentation --
+from . import cityscapes
+from . import youtube_voc
+
 # -- real: (noisy_1,...,noisy_N,clean_frame) sets --
 from . import submillilux
 from . import sird
@@ -33,6 +37,9 @@ def load(cfg):
                    "set8":set8,
                    "sid":sid,
                    "coco":coco.coco,
+                   "cityscapes":cityscapes.cityscapes,
+                   "youtube":youtube_voc.youtube_voc,
+                   "youtube_voc":youtube_voc.youtube_voc,
                    "submillilux":submillilux,
                    "submillilux_real":submillilux.real,
                    "submillilux_paired":submillilux.paired,

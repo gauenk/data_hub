@@ -6,7 +6,10 @@ import torch as th
 from einops import rearrange
 
 from PIL import Image
-import hdf5storage
+try:
+    import hdf5storage
+except:
+    pass
 from pathlib import Path
 
 def mode_info(mode):
