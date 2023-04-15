@@ -45,6 +45,7 @@ from detectron2.evaluation import (
 )
 from detectron2.projects.point_rend import ColorAugSSDTransform, add_pointrend_config
 from detectron2.data import transforms as T
+import operator
 
 # -- optical flow --
 import torch as th
@@ -132,7 +133,7 @@ def get_augs(is_train,isize):
                          vertical=random_flip=="vertical")
         )
     if not(isize is None):
-        print(isize)
+        # print(isize)
         cH,cW = isize
         augmentation.insert(0,T.RandomCrop("absolute", [cH,cW]))
     return augmentation
@@ -204,13 +205,16 @@ class YouTubeVOC():
         # self.indices = enumerate_indices(len(self.paths['images']),params.nsamples,
         #                                  params.rand_order,params.index_skip)
         # self.nsamples = len(self.indices)
+        ns = params.nsamples
+        self.nsamples = ns if ns > 0 else len(self.annos)
+        print("self.nsamples: ",self.nsamples,split)
 
         # # -- repro --
         # self.noise_once = optional(noise_info,"sim_once",False)
         # self.fixRandNoise_1 = RandomOnce(self.noise_once,self.nsamples)
 
     def __len__(self):
-        return len(self.annos)
+        return self.nsamples
 
     def __getitem__(self, index):
         """
@@ -223,14 +227,15 @@ class YouTubeVOC():
 
         # -- use mapper --
         fmted = self.mapper(self.annos[index])
-
         # # -- flow io --
         # vid_name = group.split(":")[0]
         # isize = list(clean.shape[-2:])
         # loc = [0,len(clean),0,0]
         # fflow,bflow = read_flows(FLOW_PATH,self.read_flows,vid_name,
         #                          self.noise_info,self.seed,loc,isize)
-
+        fmted['fflow'] = th.tensor([0])
+        fmted['bflow'] = th.tensor([0])
+        # print("__getitem__: ",type(fmted['instances'][0]))
         return fmted
 
 #
@@ -272,13 +277,14 @@ def load(cfg):
     data = edict()
     data.tr = YouTubeVOC(BASE,"train",noise_info,p.tr)
     data.val = YouTubeVOC(BASE,"train",noise_info,p.val)
-    data.te = YouTubeVOC(BASE,"train",noise_info,p.val)
+    data.te = YouTubeVOC(BASE,"train",noise_info,p.te)
 
     # data.val = YouTubeVOC(BASE,"valid",noise_info,p.val)
     # data.te = YouTubeVOC(BASE,"test",noise_info,p.val)
 
     # -- create loaders --
     batch_size = edict({key:val['batch_size'] for key,val in p.items()})
+    # cfg.collate_fn = operator.itemgetter(0)
     cfg.collate_fn = trivial_batch_collator
     loader = get_loaders(cfg,data,batch_size)
 
