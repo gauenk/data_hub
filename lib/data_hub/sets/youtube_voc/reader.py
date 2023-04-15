@@ -32,11 +32,11 @@ def read_video(paths,bw=False):
     vid = np.stack(vid).astype(np.float32)
     return vid
 
-def read_annos(apaths):
+def read_annos(apaths,H,W):
     annos,exists = [],[]
     for apath in apaths:
         if not apath.exists():
-            annos.append(th.zeros_like(annos[0]))
+            annos.append(th.zeros((H,W),dtype=th.long))
             exists.append(0)
             continue
         anno_img = np.array(Image.open(str(apath)))

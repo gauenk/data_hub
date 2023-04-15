@@ -148,7 +148,8 @@ class DAVISCropped():
         index_th = th.IntTensor([image_index])
 
         return {'noisy':noisy,'clean':clean,'index':index_th,
-                'fnums':frame_nums,'region':region,'rng_state':rng_state}
+                'fnums':frame_nums,'region':region,'rng_state':rng_state,
+                'fflow':fflow,'bflow':bflow}
 
 #
 # Loading the datasets in a project
@@ -200,10 +201,12 @@ def load(cfg):
 
     # -- create objcs --
     data = edict()
+    print("hi.")
     data.tr = DAVISCropped(iroot,sroot,"train",noise_info,p.tr)# #p.nsamples.tr,
                     # p.nframes.tr,p.fstride.tr,p.isize.tr,p.bw.tr,p.cropmode.tr,
                     # p.rand_order.tr,p.index_skip.tr,flippy_augs,scale_augs)
     data.val = DAVISCropped(iroot,sroot,"val",noise_info,p.val)#
+    print("done.")
     # p.nsamples.val,
     #                  p.nframes.val,p.fstride.val,p.isize.val,p.bw.val,p.cropmode.tr,
     #                  p.rand_order.val,p.index_skip.val)

@@ -35,7 +35,7 @@ def get_loaders(cfg,data,batch_size):
 
     # -- args --
     kwargs = edict()
-    kwargs['collate_fn'] = collate_dict
+    kwargs['collate_fn'] =  optional(cfg,'collate_fn',collate_dict)
     kwargs['num_workers'] = optional(cfg,'num_workers',2)
     kwargs['persistent_workers'] = optional(cfg,'persistent_workers',False)
 

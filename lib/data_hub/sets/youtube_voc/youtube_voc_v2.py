@@ -5,7 +5,8 @@ The YouTubeVOC dataset
 """
 
 # -- python imports --
-import pdb,json
+import pdb,json,copy
+dcopy = copy.deepcopy
 import numpy as np
 from pathlib import Path
 from einops import rearrange,repeat
@@ -54,9 +55,64 @@ from .paths import BASE,FLOW_PATH
 from .reader import read_files,read_video,read_annos
 from .formats import cached_format
 
-def get_augs(is_train):
+
+
+# def build_batch_data_loader(
+#     dataset,
+#     sampler,
+#     total_batch_size,
+#     *,
+#     aspect_ratio_grouping=False,
+#     num_workers=0,
+#     collate_fn=None,
+# ):
+#     """
+#     Build a batched dataloader. The main differences from `torch.utils.data.DataLoader` are:
+#     1. support aspect ratio grouping options
+#     2. use no "batch collation", because this is common for detection training
+
+#     Args:
+#         dataset (torch.utils.data.Dataset): a pytorch map-style or iterable dataset.
+#         sampler (torch.utils.data.sampler.Sampler or None): a sampler that produces indices.
+#             Must be provided iff. ``dataset`` is a map-style dataset.
+#         total_batch_size, aspect_ratio_grouping, num_workers, collate_fn: see
+#             :func:`build_detection_train_loader`.
+
+#     Returns:
+#         iterable[list]. Length of each list is the batch size of the current
+#             GPU. Each element in the list comes from the dataset.
+#     """
+#     if aspect_ratio_grouping:
+#         data_loader = torchdata.DataLoader(
+#             dataset,
+#             num_workers=num_workers,
+#             collate_fn=operator.itemgetter(0),  # don't batch, but yield individual elements
+#             worker_init_fn=worker_init_reset_seed,
+#         )  # yield individual mapped dict
+#         data_loader = AspectRatioGroupedDataset(data_loader, batch_size)
+#         if collate_fn is None:
+#             return data_loader
+#         return MapDataset(data_loader, collate_fn)
+#     else:
+#         return torchdata.DataLoader(
+#             dataset,
+#             batch_size=batch_size,
+#             drop_last=True,
+#             num_workers=num_workers,
+#             collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
+#             worker_init_fn=worker_init_reset_seed,
+#         )
+
+def trivial_batch_collator(batch):
+    """
+    A batch collator that does nothing.
+    """
+    return batch
+
+
+def get_augs(is_train,isize):
     # cfg = edict()
-    min_size = 512
+    min_size = 128
     max_size = 1024
     sample_style = "choice"
     random_flip = "horizontal"
@@ -69,11 +125,16 @@ def get_augs(is_train):
     #     # max_size = cfg.INPUT.MAX_SIZE_TEST
     #     sample_style = "choice"
     augmentation = [T.ResizeShortestEdge(min_size, max_size, sample_style)]
+
     if is_train:# and cfg.INPUT.RANDOM_FLIP != "none":
         augmentation.append(
             T.RandomFlip(prob=0.9,horizontal=random_flip=="horizontal",
                          vertical=random_flip=="vertical")
         )
+    if not(isize is None):
+        print(isize)
+        cH,cW = isize
+        augmentation.insert(0,T.RandomCrop("absolute", [cH,cW]))
     return augmentation
 
 class YouTubeVOC():
@@ -114,7 +175,7 @@ class YouTubeVOC():
             self.meta = json.load(f)
 
         # -- labels to ints --
-        cats = np.loadtxt(root/"cats.txt",dtype=str).tolist()
+        cats = ["None",]+np.loadtxt(root/"cats.txt",dtype=str).tolist()
         cats_ids = np.arange(len(cats)).tolist()
         cats = dict(zip(cats,cats_ids))
 
@@ -133,7 +194,7 @@ class YouTubeVOC():
         # recompute_boxes: bool = False,
 
         is_train = split=="train"
-        augs = get_augs(is_train)
+        augs = get_augs(is_train,isize)
         image_format = "RGB"
         self.mapper = DatasetMapperSeq(is_train=is_train,
                                        augmentations=augs,
@@ -159,32 +220,9 @@ class YouTubeVOC():
         Returns:
             tuple: (image, target) where target is index of the target class.
         """
-        return self.mapper(self.annos[index])
-        # print(self.annos[index])
-        # return self.annos[index]
 
-        # # -- get random state --
-        # rng_state = None#get_random_state()
-
-        # # -- indices --
-        # image_index = self.indices[index]
-        # group = self.groups[image_index]
-        # vid_name = group
-        # if ":" in group:
-        #     vid_name = group.split(":")[0]
-
-        # # -- load burst --
-        # vid_files = self.paths['images'][group]
-        # clean = read_video(vid_files,self.bw)
-        # clean = th.from_numpy(clean)
-        # insts,insts_exists = read_annos(vid_files)
-
-        # # -- read meta-data --
-        # labels = self.meta['videos'][vid_name]
-
-        # # -- convert --
-        # annos = _files_to_dict(insts,labels)
-        # print(annos)
+        # -- use mapper --
+        fmted = self.mapper(self.annos[index])
 
         # # -- flow io --
         # vid_name = group.split(":")[0]
@@ -193,30 +231,7 @@ class YouTubeVOC():
         # fflow,bflow = read_flows(FLOW_PATH,self.read_flows,vid_name,
         #                          self.noise_info,self.seed,loc,isize)
 
-        # # -- cropping --
-        # region = th.IntTensor([])
-        # in_vids = [clean,insts,fflow,bflow] if self.read_flows else [clean,insts]
-        # use_region = "region" in self.cropmode or "coords" in self.cropmode
-        # if use_region:
-        #     region = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
-        # else:
-        #     in_vids = crop_vid(in_vids,self.cropmode,self.isize,self.region_temp)
-        #     clean,insts = in_vids[0],in_vids[1]
-        #     if self.read_flows:
-        #         fflow,bflow = in_vids[1],in_vids[2]
-
-        # # -- get noise --
-        # # with self.fixRandNoise_1.set_state(index):
-        # noisy = self.noise_trans(clean)
-
-        # # -- manage flow and output --
-        # index_th = th.IntTensor([image_index])
-        # frame_nums = th.IntTensor(self.paths['fnums'][group])
-
-        # return {'noisy':noisy,'clean':clean,'index':index_th,
-        #         'fnums':frame_nums,'region':region,'rng_state':rng_state,
-        #         'fflow':fflow,'bflow':bflow,"insts":insts,"insts_exists":insts_exists,
-        #         "labels":labels}
+        return fmted
 
 #
 # Loading the datasets in a project
@@ -233,6 +248,7 @@ def load(cfg):
     #
 
     # -- noise and dyanmics --
+    cfg = dcopy(cfg)
     noise_info = noise_from_cfg(cfg)
 
     # -- field names and defaults --
@@ -255,11 +271,15 @@ def load(cfg):
     # -- create objcs --
     data = edict()
     data.tr = YouTubeVOC(BASE,"train",noise_info,p.tr)
+    data.val = YouTubeVOC(BASE,"train",noise_info,p.val)
+    data.te = YouTubeVOC(BASE,"train",noise_info,p.val)
+
     # data.val = YouTubeVOC(BASE,"valid",noise_info,p.val)
     # data.te = YouTubeVOC(BASE,"test",noise_info,p.val)
 
     # -- create loaders --
     batch_size = edict({key:val['batch_size'] for key,val in p.items()})
+    cfg.collate_fn = trivial_batch_collator
     loader = get_loaders(cfg,data,batch_size)
 
     # # -- build training dataset --
