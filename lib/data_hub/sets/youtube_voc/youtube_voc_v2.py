@@ -26,26 +26,10 @@ from data_hub.cropping import crop_vid
 from data_hub.opt_parsing import parse_cfg
 # apply_sobel_filter,sample_sobel_region,sample_rand_region
 
-# -- datahub --
-import detectron2.data.transforms as T
-import detectron2.utils.comm as comm
-from detectron2.checkpoint import DetectionCheckpointer
-from detectron2.config import get_cfg
-from detectron2.data import DatasetMapper, MetadataCatalog, build_detection_train_loader
-from detectron2.data import DatasetMapperSeq
-from detectron2.engine import DefaultTrainer, default_argument_parser, default_setup, launch
-from detectron2.evaluation import (
-    CityscapesInstanceEvaluator,
-    CityscapesSemSegEvaluator,
-    COCOEvaluator,
-    DatasetEvaluators,
-    LVISEvaluator,
-    SemSegEvaluator,
-    verify_results,
-)
-from detectron2.projects.point_rend import ColorAugSSDTransform, add_pointrend_config
-from detectron2.data import transforms as T
+# -- detectron2 --
 import operator
+import detectron2.data.transforms as T
+from .mapper import DatasetMapperSeq
 
 # -- optical flow --
 import torch as th
@@ -56,84 +40,24 @@ from .paths import BASE,FLOW_PATH
 from .reader import read_files,read_video,read_annos
 from .formats import cached_format
 
-
-
-# def build_batch_data_loader(
-#     dataset,
-#     sampler,
-#     total_batch_size,
-#     *,
-#     aspect_ratio_grouping=False,
-#     num_workers=0,
-#     collate_fn=None,
-# ):
-#     """
-#     Build a batched dataloader. The main differences from `torch.utils.data.DataLoader` are:
-#     1. support aspect ratio grouping options
-#     2. use no "batch collation", because this is common for detection training
-
-#     Args:
-#         dataset (torch.utils.data.Dataset): a pytorch map-style or iterable dataset.
-#         sampler (torch.utils.data.sampler.Sampler or None): a sampler that produces indices.
-#             Must be provided iff. ``dataset`` is a map-style dataset.
-#         total_batch_size, aspect_ratio_grouping, num_workers, collate_fn: see
-#             :func:`build_detection_train_loader`.
-
-#     Returns:
-#         iterable[list]. Length of each list is the batch size of the current
-#             GPU. Each element in the list comes from the dataset.
-#     """
-#     if aspect_ratio_grouping:
-#         data_loader = torchdata.DataLoader(
-#             dataset,
-#             num_workers=num_workers,
-#             collate_fn=operator.itemgetter(0),  # don't batch, but yield individual elements
-#             worker_init_fn=worker_init_reset_seed,
-#         )  # yield individual mapped dict
-#         data_loader = AspectRatioGroupedDataset(data_loader, batch_size)
-#         if collate_fn is None:
-#             return data_loader
-#         return MapDataset(data_loader, collate_fn)
-#     else:
-#         return torchdata.DataLoader(
-#             dataset,
-#             batch_size=batch_size,
-#             drop_last=True,
-#             num_workers=num_workers,
-#             collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
-#             worker_init_fn=worker_init_reset_seed,
-#         )
-
 def trivial_batch_collator(batch):
     """
     A batch collator that does nothing.
     """
     return batch
 
-
 def get_augs(is_train,isize):
-    # cfg = edict()
     min_size = 128
     max_size = 1024
     sample_style = "choice"
     random_flip = "horizontal"
-    # if is_train:
-    #     # min_size = cfg.INPUT.MIN_SIZE_TRAIN
-    #     # max_size = cfg.INPUT.MAX_SIZE_TRAIN
-    #     # sample_style = cfg.INPUT.MIN_SIZE_TRAIN_SAMPLING
-    # else:
-    #     # min_size = cfg.INPUT.MIN_SIZE_TEST
-    #     # max_size = cfg.INPUT.MAX_SIZE_TEST
-    #     sample_style = "choice"
     augmentation = [T.ResizeShortestEdge(min_size, max_size, sample_style)]
-
     if is_train:# and cfg.INPUT.RANDOM_FLIP != "none":
         augmentation.append(
             T.RandomFlip(prob=0.9,horizontal=random_flip=="horizontal",
                          vertical=random_flip=="vertical")
         )
     if not(isize is None):
-        # print(isize)
         cH,cW = isize
         augmentation.insert(0,T.RandomCrop("absolute", [cH,cW]))
     return augmentation
@@ -167,8 +91,7 @@ class YouTubeVOC():
         self.noise_trans = get_noise_transform(noise_info,noise_only=True)
 
         # -- load paths --
-        self.paths = read_files(root,split,params.nframes,
-                                params.fstride,ext="png")
+        self.paths = read_files(root,split,0,1,ext="png")
         self.groups = sorted(list(self.paths['images'].keys()))
 
         # -- read meta-data --
@@ -183,17 +106,9 @@ class YouTubeVOC():
         # -- process --
         self.annos = cached_format(root,split,self.paths['images'],
                                    self.paths['annos'],self.meta,cats,to_polygons=True)
-        # is_train: bool,
-        # *,
-        # augmentations: List[Union[T.Augmentation, T.Transform]],
-        # image_format: str,
-        # use_instance_mask: bool = False,
-        # use_keypoint: bool = False,
-        # instance_mask_format: str = "polygon",
-        # keypoint_hflip_indices: Optional[np.ndarray] = None,
-        # precomputed_proposal_topk: Optional[int] = None,
-        # recompute_boxes: bool = False,
 
+        # -- mapper --
+        self.nframes = params.nframes
         is_train = split=="train"
         augs = get_augs(is_train,isize)
         image_format = "RGB"
@@ -201,13 +116,18 @@ class YouTubeVOC():
                                        augmentations=augs,
                                        image_format=image_format)
 
-        # # -- limit num of samples --
-        # self.indices = enumerate_indices(len(self.paths['images']),params.nsamples,
-        #                                  params.rand_order,params.index_skip)
-        # self.nsamples = len(self.indices)
-        ns = params.nsamples
-        self.nsamples = ns if ns > 0 else len(self.annos)
-        print("self.nsamples: ",self.nsamples,split)
+        # -- num of samples --
+        self.input_nsamples = params.nsamples
+        self.rand_order = params.rand_order
+        self.index_skip = params.index_skip
+        self.reset_sample_indices()
+
+    def reset_sample_indices(self):
+        # -- limit num of samples --
+        self.indices = enumerate_indices(len(self.paths['images']),
+                                         self.input_nsamples,
+                                         self.rand_order,self.index_skip)
+        self.nsamples = len(self.indices)
 
         # # -- repro --
         # self.noise_once = optional(noise_info,"sim_once",False)
@@ -225,14 +145,19 @@ class YouTubeVOC():
             tuple: (image, target) where target is index of the target class.
         """
 
+        # -- indices --
+        image_index = self.indices[index].item()
+
         # -- use mapper --
-        fmted = self.mapper(self.annos[index])
+        fmted = self.mapper(self.annos[image_index],self.nframes)
+
         # # -- flow io --
         # vid_name = group.split(":")[0]
         # isize = list(clean.shape[-2:])
         # loc = [0,len(clean),0,0]
         # fflow,bflow = read_flows(FLOW_PATH,self.read_flows,vid_name,
         #                          self.noise_info,self.seed,loc,isize)
+        fmted['image_index'] = image_index
         fmted['fflow'] = th.tensor([0])
         fmted['bflow'] = th.tensor([0])
         # print("__getitem__: ",type(fmted['instances'][0]))
@@ -276,11 +201,8 @@ def load(cfg):
     # -- create objcs --
     data = edict()
     data.tr = YouTubeVOC(BASE,"train",noise_info,p.tr)
-    data.val = YouTubeVOC(BASE,"train",noise_info,p.val)
-    data.te = YouTubeVOC(BASE,"train",noise_info,p.te)
-
-    # data.val = YouTubeVOC(BASE,"valid",noise_info,p.val)
-    # data.te = YouTubeVOC(BASE,"test",noise_info,p.val)
+    data.val = YouTubeVOC(BASE,"valid",noise_info,p.val)
+    data.te = data.val
 
     # -- create loaders --
     batch_size = edict({key:val['batch_size'] for key,val in p.items()})

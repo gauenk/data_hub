@@ -13,21 +13,28 @@ def cached_format(root,split,img_paths,anno_paths,labels,cats,
                   to_polygons=False,reset=False):
 
     # -- check cache --
-    cache_name = str(root / (".cache/format_%s" % split))
-    pkl_name = str(root / (".cache_pkl/format_%s.pkl" % split))
+    npaths = len(img_paths)
+    cache_name = str(root / (".cache/format_%s_%d" % (split,npaths)))
+    pkl_name = root / (".cache_pkl/format_%s_%d.pkl" % (split,npaths))
+    # print(cache_name)
     cache = cache_io.ExpCache(cache_name)
     # reset = True
     if reset: cache.clear()
-    # reload = False or reset
-    # records = cache.to_records_fast(pkl_name,clear=reload)
-    # print(len(records),len(img_paths))
-    # # _,_,results = cache.load_raw_fast()
-    # if len(records) == len(img_paths):
-    #     return records.to_dict()
-    verbose = False
+    # print("pkl_name: ",pkl_name)
+    # print(len(img_paths))
+    reload = False or reset
+    # print("len(cache): ",len(cache))
+    if len(cache) > 0:
+        records = cache.to_records_fast(pkl_name,clear=reload)
+        return list(records.T.to_dict().values())
+        # print(len(records),len(img_paths))
+        # # _,_,results = cache.load_raw_fast()
+        # if len(records) == len(img_paths):
+        #     return records.to_dict()
+    verbose = True
 
     # -- run --
-    MAX = 100
+    MAX = 100000
     cnt = 0
     keys = list(anno_paths.keys())
     results = []
@@ -36,9 +43,10 @@ def cached_format(root,split,img_paths,anno_paths,labels,cats,
         uuid = cache.get_uuid(cfg)
         results_g = cache.read_results(uuid)
         if results_g is None:
+            vid_name = group_name.split(":")[0] if ":" in group_name else group_name
             results_g = _files_to_dict(img_paths[group_name],
                                        anno_paths[group_name],
-                                       labels['videos'][group_name]['objects'],
+                                       labels['videos'][vid_name]['objects'],
                                        group_name,cats,to_polygons=to_polygons)
             cache.save_exp(uuid,cfg,results_g)
         results.append(results_g)

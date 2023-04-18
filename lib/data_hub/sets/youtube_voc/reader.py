@@ -54,18 +54,18 @@ def read_annos(apaths,H,W):
 #
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-def get_video_paths(root,ext="jpg"):
+def read_anno_paths(root):
     fns = sorted(list(root.iterdir()))
     fnums = [int(f.stem) for f in fns]
     return fns,fnums
 
-def read_anno_paths(ipaths):
-    apaths = []
-    for ipath in ipaths:
-        apath = Path(str(ipath).replace("JPEGImages","Annotations"))
-        apath = apath.parent / apath.name.replace("jpg","png")
-        apaths.append(apath)
-    return apaths
+def read_video_paths(apaths):
+    ipaths = []
+    for apath in apaths:
+        ipath = Path(str(apath).replace("Annotations","JPEGImages"))
+        ipath = ipath.parent / ipath.name.replace("png","jpg")
+        ipaths.append(ipath)
+    return ipaths
 
 def read_files(root,split,nframes,stride,ext="jpg",reset=False):
 
@@ -82,24 +82,27 @@ def read_files(root,split,nframes,stride,ext="jpg",reset=False):
     dil = 1
 
     # -- get vid names in set --
-    iroot = root/split/"JPEGImages"
-    vid_names = sorted([s.name for s in iroot.iterdir()])
+    aroot = root/split/"Annotations"
+    vid_names = sorted([s.name for s in aroot.iterdir()])
 
     # -- get files --
     files = {'images':{},"annos":{},"fnums":{}}
     for vid_name in vid_names:
 
         # -- get video paths --
-        vid_paths,frame_nums = get_video_paths(iroot/vid_name,ext)
-        anno_paths = read_anno_paths(vid_paths)
+        anno_paths,frame_nums = read_anno_paths(aroot/vid_name)
+        vid_paths = read_video_paths(anno_paths)
+        # vid_paths,frame_nums = get_video_paths(iroot/vid_name,ext)
+        # anno_paths = read_anno_paths(vid_paths)
         total_nframes = len(vid_paths)
         assert total_nframes > 0
 
         # -- for now... --
-        nframes = total_nframes
+        # nframes = total_nframes
 
         # -- pick number of sub frames --
-        nframes_vid = nframes
+        nframes_i = nframes if nframes > 0 else total_nframes
+        nframes_vid = min(nframes_i,total_nframes)
         if nframes_vid <= 0:
               nframes_vid = total_nframes
 
