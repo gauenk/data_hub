@@ -28,8 +28,11 @@ from data_hub.opt_parsing import parse_cfg
 
 # -- detectron2 --
 import operator
-import detectron2.data.transforms as T
-from .mapper import DatasetMapperSeq
+try:
+    import detectron2.data.transforms as T
+    from .mapper import DatasetMapperSeq
+except:
+    pass
 
 # -- optical flow --
 import torch as th
