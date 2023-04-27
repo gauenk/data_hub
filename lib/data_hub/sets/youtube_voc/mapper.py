@@ -98,7 +98,8 @@ class DatasetMapperSeq:
             # recompute bbox after transform
             if self.recompute_boxes:
                 instances_t.gt_boxes = instances_t.gt_masks.get_bounding_boxes()
-            instances_t = utils.filter_empty_instances(instances_t)
+            instances_t = utils.filter_empty_instances(instances_t,by_box=False)
+            # print(instances_t)
             # print(type(instances_t))
             instances.append(instances_t)
         dataset_dict["instances"] = instances
@@ -112,6 +113,7 @@ class DatasetMapperSeq:
             dict: a format that builtin models in detectron2 accept
         """
         dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
+
         # USER: Write your own image loading if it's not from a file
         vid = []
         fns = dataset_dict["file_name"]
@@ -176,6 +178,13 @@ class DatasetMapperSeq:
         if "annotations" in dataset_dict:
             self._transform_annotations(dataset_dict, transforms, image_shape, NF)
         # print("dataset_dict.keys(): ",list(dataset_dict.keys()))
+
+        # -- limit to nframes --
+        fields = ["annotations","file_name"]
+        for field in fields:
+            vals = []
+            for t in range(NF): vals.append(dataset_dict[field][t])
+            dataset_dict[field] = vals
 
         return dataset_dict
 

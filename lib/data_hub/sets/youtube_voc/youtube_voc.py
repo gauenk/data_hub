@@ -5,7 +5,8 @@ The YouTubeVOC dataset
 """
 
 # -- python imports --
-import pdb,json
+import pdb,json,copy
+dcopy = copy.deepcopy
 import numpy as np
 from pathlib import Path
 from einops import rearrange,repeat
@@ -25,6 +26,14 @@ from data_hub.cropping import crop_vid
 from data_hub.opt_parsing import parse_cfg
 # apply_sobel_filter,sample_sobel_region,sample_rand_region
 
+# -- detectron2 --
+import operator
+try:
+    import detectron2.data.transforms as T
+    from .mapper import DatasetMapperSeq
+except:
+    pass
+
 # -- optical flow --
 import torch as th
 from data_hub.read_flow import read_flows
@@ -32,7 +41,30 @@ from data_hub.read_flow import read_flows
 # -- local imports --
 from .paths import BASE,FLOW_PATH
 from .reader import read_files,read_video,read_annos
-from .formats import _files_to_dict
+from .formats import cached_format,_files_to_dict
+
+def trivial_batch_collator(batch):
+    """
+    A batch collator that does nothing.
+    """
+    return batch
+
+def get_augs(is_train,isize):
+    min_size = 800
+    max_size = 1333
+    sample_style = "choice"
+    random_flip = "horizontal"
+    augmentation = [T.ResizeShortestEdge(min_size, max_size, sample_style)]
+    if is_train:# and cfg.INPUT.RANDOM_FLIP != "none":
+        augmentation.append(
+            T.RandomFlip(prob=0.3,horizontal=random_flip=="horizontal",
+                         vertical=random_flip=="vertical")
+        )
+    print(isize)
+    # if not(isize is None):
+    #     cH,cW = isize
+    #     augmentation.insert(0,T.RandomCrop("absolute", [cH,cW]))
+    return augmentation
 
 class YouTubeVOC():
 
@@ -63,25 +95,64 @@ class YouTubeVOC():
         self.noise_trans = get_noise_transform(noise_info,noise_only=True)
 
         # -- load paths --
-        self.paths = read_files(root,split,params.nframes,
-                                params.fstride,ext="png")
+        self.paths = read_files(root,split,0,1,ext="png")
         self.groups = sorted(list(self.paths['images'].keys()))
-
-        # -- limit num of samples --
-        self.indices = enumerate_indices(len(self.paths['images']),params.nsamples,
-                                         params.rand_order,params.index_skip)
-        self.nsamples = len(self.indices)
 
         # -- read meta-data --
         with open(root/split/"meta.json","r") as f:
             self.meta = json.load(f)
 
-        # -- repro --
-        self.noise_once = optional(noise_info,"sim_once",False)
+        # -- labels to ints --
+        cats = ["None",]+np.loadtxt(root/"cats.txt",dtype=str).tolist()
+        cats_ids = np.arange(len(cats)).tolist()
+        cats = dict(zip(cats,cats_ids))
+        self.cats = cats
+
+        # -- process --
+        self.anno_keys = list(self.paths['annos'].keys())
+        # self.annos = cached_format(root,split,self.paths['images'],
+        #                            self.paths['annos'],self.meta,
+        #                            cats,to_polygons=True)
+
+        # -- mapper --
+        self.nframes = params.nframes
+        is_train = split=="train"
+        print(isize)
+        augs = get_augs(is_train,isize)
+        image_format = "RGB"
+        self.mapper = DatasetMapperSeq(is_train=is_train,
+                                       augmentations=augs,
+                                       image_format=image_format)
+
+        # -- num of samples --
+        self.input_nsamples = params.nsamples
+        self.rand_order = False#params.rand_order
+        self.index_skip = params.index_skip
+        self.reset_sample_indices()
+
+    def reset_sample_indices(self):
+        # -- limit num of samples --
+        self.indices = enumerate_indices(len(self.paths['images']),
+                                         self.input_nsamples,
+                                         self.rand_order,self.index_skip)
+        self.nsamples = len(self.indices)
+
+        # # -- repro --
+        # self.noise_once = optional(noise_info,"sim_once",False)
         # self.fixRandNoise_1 = RandomOnce(self.noise_once,self.nsamples)
 
     def __len__(self):
         return self.nsamples
+
+    def get_anno(self,image_index):
+        to_polygons=True
+        group_name = self.anno_keys[image_index]
+        vid_name = group_name.split(":")[0] if ":" in group_name else group_name
+        results_g = _files_to_dict(self.paths['images'][group_name],
+                                   self.paths['annos'][group_name],
+                                   self.meta['videos'][vid_name]['objects'],
+                                   group_name,self.cats,to_polygons=to_polygons)
+        return results_g
 
     def __getitem__(self, index):
         """
@@ -92,60 +163,24 @@ class YouTubeVOC():
             tuple: (image, target) where target is index of the target class.
         """
 
-        # -- get random state --
-        rng_state = None#get_random_state()
-
         # -- indices --
-        image_index = self.indices[index]
-        group = self.groups[image_index]
-        vid_name = group
-        if ":" in group:
-            vid_name = group.split(":")[0]
+        image_index = self.indices[index].item()
 
-        # -- load burst --
-        vid_files = self.paths['images'][group]
-        clean = read_video(vid_files,self.bw)
-        clean = th.from_numpy(clean)
-        insts,insts_exists = read_annos(vid_files)
+        # -- use mapper --
+        anno = self.get_anno(image_index)
+        fmted = self.mapper(anno,self.nframes)
 
-        # -- read meta-data --
-        labels = self.meta['videos'][vid_name]
-
-        # -- convert --
-        annos = _files_to_dict(insts,labels)
-        print(annos)
-
-        # -- flow io --
-        vid_name = group.split(":")[0]
-        isize = list(clean.shape[-2:])
-        loc = [0,len(clean),0,0]
-        fflow,bflow = read_flows(FLOW_PATH,self.read_flows,vid_name,
-                                 self.noise_info,self.seed,loc,isize)
-
-        # -- cropping --
-        region = th.IntTensor([])
-        in_vids = [clean,insts,fflow,bflow] if self.read_flows else [clean,insts]
-        use_region = "region" in self.cropmode or "coords" in self.cropmode
-        if use_region:
-            region = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
-        else:
-            in_vids = crop_vid(in_vids,self.cropmode,self.isize,self.region_temp)
-            clean,insts = in_vids[0],in_vids[1]
-            if self.read_flows:
-                fflow,bflow = in_vids[1],in_vids[2]
-
-        # -- get noise --
-        # with self.fixRandNoise_1.set_state(index):
-        noisy = self.noise_trans(clean)
-
-        # -- manage flow and output --
-        index_th = th.IntTensor([image_index])
-        frame_nums = th.IntTensor(self.paths['fnums'][group])
-
-        return {'noisy':noisy,'clean':clean,'index':index_th,
-                'fnums':frame_nums,'region':region,'rng_state':rng_state,
-                'fflow':fflow,'bflow':bflow,"insts":insts,"insts_exists":insts_exists,
-                "labels":labels}
+        # # -- flow io --
+        # vid_name = group.split(":")[0]
+        # isize = list(clean.shape[-2:])
+        # loc = [0,len(clean),0,0]
+        # fflow,bflow = read_flows(FLOW_PATH,self.read_flows,vid_name,
+        #                          self.noise_info,self.seed,loc,isize)
+        fmted['image_index'] = image_index
+        fmted['fflow'] = th.tensor([0])
+        fmted['bflow'] = th.tensor([0])
+        # print("__getitem__: ",type(fmted['instances'][0]))
+        return fmted
 
 #
 # Loading the datasets in a project
@@ -162,6 +197,7 @@ def load(cfg):
     #
 
     # -- noise and dyanmics --
+    cfg = dcopy(cfg)
     noise_info = noise_from_cfg(cfg)
 
     # -- field names and defaults --
@@ -185,10 +221,19 @@ def load(cfg):
     data = edict()
     data.tr = YouTubeVOC(BASE,"train",noise_info,p.tr)
     data.val = YouTubeVOC(BASE,"valid",noise_info,p.val)
-    data.te = YouTubeVOC(BASE,"test",noise_info,p.val)
+    data.te = data.val
 
     # -- create loaders --
     batch_size = edict({key:val['batch_size'] for key,val in p.items()})
+    # cfg.collate_fn = operator.itemgetter(0)
+    cfg.collate_fn = trivial_batch_collator
     loader = get_loaders(cfg,data,batch_size)
+
+    # # -- build training dataset --
+    # mapper = DatasetMapper(cfg, is_train=split=="train",
+    #                        augmentations=build_sem_seg_train_aug(cfg))
+    # loaders.tr = build_detection_train_loader(cfg, mapper=mapper) # the data loader.
+
+
 
     return data,loader

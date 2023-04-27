@@ -13,10 +13,9 @@ def cached_format(root,split,img_paths,anno_paths,labels,cats,
                   to_polygons=False,reset=False):
 
     # -- check cache --
-    npaths = len(img_paths)
+    npaths = min(1000,len(img_paths))
     cache_name = str(root / (".cache/format_%s_%d" % (split,npaths)))
     pkl_name = root / (".cache_pkl/format_%s_%d.pkl" % (split,npaths))
-    # print(cache_name)
     cache = cache_io.ExpCache(cache_name)
     # reset = True
     if reset: cache.clear()
@@ -26,7 +25,9 @@ def cached_format(root,split,img_paths,anno_paths,labels,cats,
     # print("len(cache): ",len(cache))
     if len(cache) > 0:
         records = cache.to_records_fast(pkl_name,clear=reload)
-        return list(records.T.to_dict().values())
+        data = list(records.T.to_dict().values())
+        print(len(data))
+        return data
         # print(len(records),len(img_paths))
         # # _,_,results = cache.load_raw_fast()
         # if len(records) == len(img_paths):
@@ -34,7 +35,7 @@ def cached_format(root,split,img_paths,anno_paths,labels,cats,
     verbose = True
 
     # -- run --
-    MAX = 100000
+    MAX = npaths#100000
     cnt = 0
     keys = list(anno_paths.keys())
     results = []
@@ -50,9 +51,9 @@ def cached_format(root,split,img_paths,anno_paths,labels,cats,
                                        group_name,cats,to_polygons=to_polygons)
             cache.save_exp(uuid,cfg,results_g)
         results.append(results_g)
-        cnt += 1
-        if cnt > MAX:
+        if cnt >= MAX:
             break
+        cnt += 1
 
     return results
 

@@ -8,6 +8,7 @@ from . import sid
 from . import sidd
 from . import davis
 from . import gopro
+from . import iphone_s2023
 
 # -- video + segmentation --
 from . import cityscapes
@@ -34,12 +35,13 @@ def load(cfg):
     set_loaders = {"toy64":toy64,
                    "toy":toy,
                    "iphone":iphone,
+                   "iphone_s2023":iphone_s2023,
                    "set8":set8,
                    "sid":sid,
                    "coco":coco.coco,
                    "cityscapes":cityscapes.cityscapes,
-                   "youtube":youtube_voc.youtube_voc_v2,
-                   "youtube_voc":youtube_voc.youtube_voc_v2,
+                   "youtube":youtube_voc.youtube_voc,
+                   "youtube_voc":youtube_voc.youtube_voc,
                    "submillilux":submillilux,
                    "submillilux_real":submillilux.real,
                    "submillilux_paired":submillilux.paired,
