@@ -10,7 +10,7 @@ from torchvision import transforms as tvT
 from data_hub.common import optional
 from .impl import AddMultiScaleGaussianNoise,GaussianBlur,AddGaussianNoise,AddPoissonNoiseBW,AddLowLightNoiseBW,AddHeteroGaussianNoise,ScaleZeroMean,QIS,Submillilux,PoissonGaussianNoise
 
-__all__ = ['get_noise_transform']
+__all__ = ['get_noise_transform','choose_noise_transform']
 
 
 def get_noise_transform(noise_info,noise_only=False,
