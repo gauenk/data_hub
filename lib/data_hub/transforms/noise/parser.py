@@ -8,7 +8,7 @@ from torchvision import transforms as tvT
 
 # -- project imports --
 from data_hub.common import optional
-from .impl import AddMultiScaleGaussianNoise,GaussianBlur,AddGaussianNoise,AddPoissonNoiseBW,AddLowLightNoiseBW,AddHeteroGaussianNoise,ScaleZeroMean,QIS,Submillilux,PoissonGaussianNoise
+from .impl import AddMultiScaleGaussianNoise,GaussianBlur,AddGaussianNoise,AddPoissonNoiseBW,AddLowLightNoiseBW,AddHeteroGaussianNoise,ScaleZeroMean,QIS,Submillilux,PoissonGaussianNoise,SuperResolutionNoise
 
 __all__ = ['get_noise_transform','choose_noise_transform']
 
@@ -39,6 +39,8 @@ def choose_noise_transform(noise_info, verbose=False):
     ntype = noise_info.ntype
     if ntype == None:
         return get_none_noise()
+    elif "sr" in ntype:
+        return get_sr_noise(ntype,noise_info)
     elif ntype == "g":
         return get_g_noise(noise_info)
     elif ntype == "hg":
@@ -71,6 +73,12 @@ def get_none_noise():
             return vid
     none_noise = NoneNoise
     return none_noise
+
+
+def get_sr_noise(ntype,params):
+    scale = params['sr_scale']
+    super_resolution = SuperResolutionNoise(scale)
+    return super_resolution
 
 def get_g_noise(params):
     """
@@ -146,6 +154,9 @@ def noise_from_cfg(cfg):
     if ntype is None or ntype == "None" or ntype == "none":
         fields = []
         defs = []
+    elif ntype == "sr":
+        fields = ["sr_scale"]
+        defs = [-1]
     elif ntype == "g":
         fields = ["sigma"]
         defs = [-1]

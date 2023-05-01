@@ -22,6 +22,18 @@ except:
 # -- project imports --
 # from pyutils.timer import Timer
 
+class SuperResolutionNoise:
+
+    def __init__(self,scale):
+        self.scale = scale
+
+    def __call__(self,image):
+        osize = list(image.shape[-2:])
+        isize = [int(s/self.scale) for s in osize]
+        smaller = tvF.resize(image,isize,antialias=False)
+        noisy = tvF.resize(smaller,osize,antialias=False)
+        return noisy
+
 class QIS:
 
     fields = ["alpha","read_noise","nbits"]
