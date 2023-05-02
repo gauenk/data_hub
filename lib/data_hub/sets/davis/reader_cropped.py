@@ -67,14 +67,18 @@ def read_names(iroot,sroot,nframes,ds_split,ext="png"):
     """
     Just read the folder names
     """
+    # -- checking nframes --
+    assert 0 < nframes <= 10,"Num frames in davis_cropped must be int in (0,10]"
 
     # -- check cache --
-    cache_name = str(iroot.parent / (".cache/cropped_%s" % ds_split))
-    pkl_name = iroot.parent / (".cache_pkl/cropped_%s.pkl" % ds_split)
+    subname = "cropped_%s_%d" % (ds_split,nframes)
+    cache_name = str(iroot.parent / (".cache/%s" % subname))
     cache = cache_io.ExpCache(cache_name)
-    if pkl_name.exists():
-        records = cache.to_records_fast(str(pkl_name),clear=reload)
-        return records.to_dict()["names"]
+    cache_cfg = {"read_cropped":"read_cropped"}
+    if len(cache) > 0:
+        pkl_name = iroot.parent / (".cache_pkl/%s.pkl" % subname)
+        records = cache.to_records([cache_cfg],str(pkl_name))
+        return records.to_dict()["names"][0]
 
     # -- read split names --
     split_fn = sroot / ("%s.txt" % ds_split)
@@ -96,9 +100,8 @@ def read_names(iroot,sroot,nframes,ds_split,ext="png"):
             names.append(name_s)
 
     # -- save --
-    cfg = {"read_cropped":"read_cropped"}
-    uuid = cache.get_uuid(cfg)
-    cache.save_exp(uuid,cfg,{"names":names})
+    uuid = cache.get_uuid(cache_cfg)
+    cache.save_exp(uuid,cache_cfg,{"names":names})
 
     return names
 
@@ -113,7 +116,6 @@ def read_data(name_s,iroot,nframes,bw=False):
     tmp = list(base.iterdir())
     crop_info = [p.stem for p in base.iterdir() if "crop" in p.stem][0]
     paths = sorted(list(p for p in base.iterdir() if p.suffix in [".png",".jpeg"]))
-    # print(fstart,nframes,len(paths))
     paths = [paths[ti] for ti in range(fstart,fstart+nframes)]
     clean = read_video(paths,bw=bw)
 

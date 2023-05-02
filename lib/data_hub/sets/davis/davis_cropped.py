@@ -104,13 +104,17 @@ class DAVISCropped():
         rng_state = None#get_random_state()
 
         # -- indices --
-        image_index = self.indices[index]
+        image_index = self.indices[index].item()
+        # print(index,image_index)
         # group = self.groups[image_index]
         # print(self.names[image_index],self.groups[image_index])
 
         # -- load burst --
         subvid_name = self.names[image_index]
-        clean,frame_nums,loc = read_data(subvid_name,self.iroot,self.nframes,self.bw)
+        # clean,frame_nums,loc = read_data(subvid_name,self.iroot,self.nframes,self.bw)
+        clean = th.zeros((5,3,256,256))
+        frame_nums = th.arange(5)
+        loc = [0,0]
 
         # -- augmentations --
         if self.nscale_augs > 0:
