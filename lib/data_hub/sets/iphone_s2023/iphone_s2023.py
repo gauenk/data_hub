@@ -105,6 +105,7 @@ class IPhoneSpring2023():
         loc = [0,len(clean),0,0]
         fflow,bflow = read_flows(FLOW_BASE,self.read_flows,vid_name,
                                  self.noise_info,self.seed,loc,isize)
+
         # -- cropping --
         region = th.IntTensor([])
         in_vids = [clean,fflow,bflow] if self.read_flows else [clean]
@@ -116,14 +117,6 @@ class IPhoneSpring2023():
             clean = in_vids[0]
             if self.read_flows:
                 fflow,bflow = in_vids[1],in_vids[2]
-
-        # # -- cropping --
-        # region = th.IntTensor([])
-        # use_region = "region" in self.cropmode or "coords" in self.cropmode
-        # if use_region:
-        #     region = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
-        # else:
-        #     clean = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
 
         # -- get noise --
         # with self.random_once.set_state(index):

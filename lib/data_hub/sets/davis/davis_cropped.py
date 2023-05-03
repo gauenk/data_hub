@@ -111,10 +111,7 @@ class DAVISCropped():
 
         # -- load burst --
         subvid_name = self.names[image_index]
-        # clean,frame_nums,loc = read_data(subvid_name,self.iroot,self.nframes,self.bw)
-        clean = th.zeros((5,3,256,256))
-        frame_nums = th.arange(5)
-        loc = [0,0]
+        clean,frame_nums,loc = read_data(subvid_name,self.iroot,self.nframes,self.bw)
 
         # -- augmentations --
         if self.nscale_augs > 0:
