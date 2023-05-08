@@ -60,7 +60,8 @@ class IPhoneSpring2023():
         self.noise_trans = get_noise_transform(noise_info,noise_only=True)
 
         # -- load paths --
-        self.paths = read_files(iroot,sroot,split,params.nframes,params.fstride)
+        self.paths = read_files(iroot,sroot,split,params.nframes,
+                                params.fstride,params.video_seq_max)
         self.groups = sorted(list(self.paths['images'].keys()))
 
         # -- limit num of samples --
@@ -163,7 +164,8 @@ def load(cfg):
               "noise_once":False,
               "num_workers":2,
               "read_flows":False,
-              "seed":123}
+              "seed":123,
+              "video_seq_max":0}
     p = parse_cfg(cfg,modes,fields)
 
     # -- setup paths --

@@ -30,11 +30,12 @@ def read_video(paths,bw=False):
     vid = np.stack(vid).astype(np.float32)
     return vid
 
-def get_video_paths(vid_dir,ext="png"):
+def get_video_paths(vid_dir,nmax,ext="png"):
     MAXF = 10000
     paths,frame_nums = [],[]
     for t in range(MAXF):
         vid_t = vid_dir / ("%05d.%s" % (t+1,ext))
+        if (nmax > 0) and (t >= nmax): break
         if not vid_t.exists(): break
         paths.append(vid_t)
         frame_nums.append(t)
@@ -66,7 +67,7 @@ def get_vid_names(vid_fn):
 #     else:
 #         raise ValueError("Uknown noise type to reading pre-computed optical flow.")
 
-def read_files(iroot,sroot,ds_split,nframes,stride,ext="png"):
+def read_files(iroot,sroot,ds_split,nframes,stride,seq_max,ext="png"):
 
     # -- get vid names in set --
     split_fn = sroot / ("%s.txt" % ds_split)
@@ -83,7 +84,7 @@ def read_files(iroot,sroot,ds_split,nframes,stride,ext="png"):
     files = {'images':{},"fnums":{}}
     for vid_name in vid_names:
         vid_dir = iroot/vid_name
-        vid_paths,frame_nums = get_video_paths(vid_dir,ext)
+        vid_paths,frame_nums = get_video_paths(vid_dir,seq_max,ext)
         total_nframes = len(vid_paths)
         assert total_nframes > 0
 
