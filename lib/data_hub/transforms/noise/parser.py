@@ -166,6 +166,9 @@ def noise_from_cfg(cfg):
     elif ntype == "pg":
         fields = ["sigma","rate"]
         defs = [-1,-1]
+    elif ntype == "msg":
+        fields = ["sigma_min","sigma_max"]
+        defs = [-1,-1]
     elif ntype == "qis":
         fields = QIS.fields
         defs = [-1,] * fields
