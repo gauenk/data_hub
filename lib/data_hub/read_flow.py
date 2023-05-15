@@ -15,6 +15,9 @@ from einops import rearrange,repeat
 
 def read_flows(FLOW_BASE,read_bool,vid_name,noise_info,seed,loc,isize):
 
+    # -- hardcode --
+    seed = 123
+
     # -- no read --
     if not(read_bool):
         return th.FloatTensor([]),th.FloatTensor([])
@@ -61,6 +64,8 @@ def read_flow_base(noise_info,seed):
     elif ntype == "pg":
         return "pg-%d_seed-%d" % (noise_info.rate,seed)
         # return "pg-%d-%d_seed-%d" % (noise_info.sigma,noise_info.rate,seed)
+    elif ntype == "sr":
+        return "sr-%d_seed-%d" % (noise_info.sr_scale,seed)
     else:
         raise ValueError("Uknown noise type to reading pre-computed optical flow.")
 
