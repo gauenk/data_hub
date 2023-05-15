@@ -1,6 +1,7 @@
 
 import torch as th
 import numpy as np
+import numpy.random as npr
 from PIL import Image
 from pathlib import Path
 from easydict import EasyDict as edict
@@ -14,7 +15,7 @@ from einops import rearrange,repeat
 
 def read_flows(FLOW_BASE,read_bool,vid_name,noise_info,seed,loc,isize):
 
-    # -- SET --
+    # -- hardcode --
     seed = 123
 
     # -- no read --
@@ -57,9 +58,14 @@ def read_flow_base(noise_info,seed):
     ntype = noise_info.ntype
     if ntype == "g":
         return "g-%d_seed-%d" % (noise_info.sigma,seed)
+    elif ntype == "msg":
+        sigma = npr.choice([15,30,50],size=1).item()
+        return "g-%d_seed-%d" % (sigma,seed)
     elif ntype == "pg":
         return "pg-%d_seed-%d" % (noise_info.rate,seed)
         # return "pg-%d-%d_seed-%d" % (noise_info.sigma,noise_info.rate,seed)
+    elif ntype == "sr":
+        return "sr-%d_seed-%d" % (noise_info.sr_scale,seed)
     else:
         raise ValueError("Uknown noise type to reading pre-computed optical flow.")
 
