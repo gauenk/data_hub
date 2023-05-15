@@ -14,6 +14,9 @@ from einops import rearrange,repeat
 
 def read_flows(FLOW_BASE,read_bool,vid_name,noise_info,seed,loc,isize):
 
+    # -- SET --
+    seed = 123
+
     # -- no read --
     if not(read_bool):
         return th.FloatTensor([]),th.FloatTensor([])
