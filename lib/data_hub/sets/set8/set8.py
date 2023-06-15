@@ -62,7 +62,8 @@ class Set8():
         self.groups = sorted(list(self.paths['images'].keys()))
 
         # -- limit num of samples --
-        self.indices = enumerate_indices(len(self.paths['images']),params.nsamples)
+        self.indices = enumerate_indices(len(self.paths['images']),params.nsamples,
+                                         params.rand_order)
         self.nsamples = len(self.indices)
 
         # -- repro --

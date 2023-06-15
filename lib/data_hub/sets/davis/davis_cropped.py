@@ -38,9 +38,6 @@ from data_hub.read_flow import read_flows
 class DAVISCropped():
 
     def __init__(self,iroot,sroot,split,noise_info,params):
-                 # nsamples=0,nframes=0,fstride=1,isize=None,
-                 # bw=False,cropmode="coords",rand_order=False,
-                 # index_skip=1,flippy_augs=None,scale_augs=None):
 
         # -- set init params --
         self.iroot = iroot
@@ -106,9 +103,6 @@ class DAVISCropped():
 
         # -- indices --
         image_index = self.indices[index].item()
-        # print(index,image_index)
-        # group = self.groups[image_index]
-        # print(self.names[image_index],self.groups[image_index])
 
         # -- load burst --
         subvid_name = self.names[image_index]
@@ -203,17 +197,10 @@ def load(cfg):
 
     # -- create objcs --
     data = edict()
-    # print("hi.")
     tr_set = optional(cfg,"tr_set","train") # or "train-val"
-    data.tr = DAVISCropped(iroot,sroot,tr_set,noise_info,p.tr)# #p.nsamples.tr,
-                    # p.nframes.tr,p.fstride.tr,p.isize.tr,p.bw.tr,p.cropmode.tr,
-                    # p.rand_order.tr,p.index_skip.tr,flippy_augs,scale_augs)
-    data.val = DAVISCropped(iroot,sroot,"val",noise_info,p.val)#
-    data.te = DAVISCropped(iroot,sroot,"test-dev",noise_info,p.val)#
-    # print("done.")
-    # p.nsamples.val,
-    #                  p.nframes.val,p.fstride.val,p.isize.val,p.bw.val,p.cropmode.tr,
-    #                  p.rand_order.val,p.index_skip.val)
+    data.tr = DAVISCropped(iroot,sroot,tr_set,noise_info,p.tr)
+    data.val = DAVISCropped(iroot,sroot,"val",noise_info,p.val)
+    data.te = DAVISCropped(iroot,sroot,"test-dev",noise_info,p.val)
 
     # -- loaders --
     batch_size = edict({key:val['batch_size'] for key,val in p.items()})
