@@ -177,8 +177,10 @@ def load(cfg):
 
     # -- create objcs --
     data = edict()
-    data.tr = DAVIS(iroot,sroot,"train",noise_info,p.tr)
+    tr_set = optional(cfg,"tr_set","train") # or "train-val"
+    data.tr = DAVIS(iroot,sroot,tr_seta,noise_info,p.tr)
     data.val = DAVIS(iroot,sroot,"val",noise_info,p.val)
+    data.te = DAVIS(iroot,sroot,"test-dev",noise_info,p.val)
 
     # -- create loaders --
     batch_size = edict({key:val['batch_size'] for key,val in p.items()})
