@@ -65,7 +65,10 @@ def get_isize(isize):
     Convert 96_96 -> [96,96]
     """
     if not(isize is None) and (isize != "none"):
-        isize = [int(x) for x in isize.split("_")]
+        if isinstance(isize,str):
+            isize = [int(x) for x in isize.split("_")]
+        else:
+            isize = [int(isize),int(isize)]
     return isize
 
 def filter_nframes(data_sub,vid_name,frame_start=-1,nframes=0):
