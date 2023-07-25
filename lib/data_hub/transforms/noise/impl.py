@@ -80,6 +80,7 @@ class AddGaussianNoise(object):
     def __init__(self, mean=0., std=1e-2):
         self.mean = mean
         self.std = std# / 255.
+        self.sigma = std
         # self.counter = 0
         # print("Creating a new gaussian noise.")
 
@@ -216,13 +217,20 @@ class AddMultiScaleGaussianNoise(object):
         self.sigma = sigma
 
         # -- sample noise --
-        pic = torch.normal(tensor,sigma)
+        noise_level = torch.ones((1, 1, 1, 1)) * self.sigma
+        pic = torch.normal(mean=tensor, std=noise_level.expand_as(tensor))
+
+        # -- combine with noise --
+        t,_,h,w = tensor.shape
+        pic = torch.cat([pic, noise_level.expand(t,1,h,w)], 1)
+
         return pic
 
     def __repr__(self):
         smin = self.sigma_min.item()
         smax = self.sigma_max.item()
-        return self.__class__.__name__ + ' ({%2.2f,%2.2f})'.format(smin,max)
+        print(smin,smax)
+        return self.__class__.__name__ + ' ({%2.2f,%2.2f})' % (smin,smax)
 
 class GaussianBlur:
 
@@ -336,7 +344,6 @@ class PoissonGaussianNoise:
     def __repr__(self):
         msg = '(sigma={0},rate={1})'.format(self.sigma,self.rate)
         return self.__class__.__name__ + msg
-    
 
 class ScaleZeroMean:
 

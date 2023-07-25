@@ -139,13 +139,17 @@ class DAVISCropped():
         # -- get noise --
         # with self.fixRandNoise_1.set_state(index):
         noisy = self.noise_trans(clean)
+        sigma = th.FloatTensor([-1.])
+        if hasattr(self.noise_trans,"sigma"):
+            sigma = getattr(self.noise_trans,"sigma")
+            sigma = th.FloatTensor([sigma])
 
         # -- manage flow and output --
         index_th = th.IntTensor([image_index])
 
         return {'noisy':noisy,'clean':clean,'index':index_th,
                 'fnums':frame_nums,'region':region,'rng_state':rng_state,
-                'fflow':fflow,'bflow':bflow}
+                'fflow':fflow,'bflow':bflow,"sigma":sigma}
 
 #
 # Loading the datasets in a project

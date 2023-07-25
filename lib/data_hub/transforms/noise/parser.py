@@ -30,7 +30,10 @@ def get_noise_transform(noise_info,noise_only=False,
         if use_to_tensor: comp += [to_tensor]
         comp += [noise]
         if zero_mean: comp += [szm]
-    transform = tvT.Compose(comp)
+    if len(comp) > 1:
+        transform = tvT.Compose(comp)
+    else:
+        transform = comp[0]
 
     return transform
 
