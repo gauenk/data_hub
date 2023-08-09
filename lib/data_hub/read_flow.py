@@ -66,6 +66,8 @@ def read_flow_base(noise_info,seed):
         # return "pg-%d-%d_seed-%d" % (noise_info.sigma,noise_info.rate,seed)
     elif ntype == "sr":
         return "sr-%d_seed-%d" % (noise_info.sr_scale,seed)
+    elif ntype == "blur":
+        return "blur_seed-%d" % (seed)
     else:
         raise ValueError("Uknown noise type to reading pre-computed optical flow.")
 
