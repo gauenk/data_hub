@@ -63,7 +63,6 @@ class GoPro():
         # -- load paths --
         self.paths = read_files(iroot,split,self.nframes,self.fstride,ext="jpg")
         self.groups = sorted(list(self.paths['images'].keys()))
-        print(groups)
 
         # -- limit num of samples --
         self.indices = enumerate_indices(len(self.paths['images']),
@@ -128,6 +127,7 @@ class GoPro():
         index_th = th.IntTensor([image_index])
 
         return {'noisy':noisy,'clean':clean,
+                'fflow':fflow,'bflow':bflow,
                 'blur':noisy,'sharp':clean,'blur_gamma':blur_gamma,
                 'index':index_th,'fnums':frame_nums,'region':region,
                 'rng_state':rng_state}

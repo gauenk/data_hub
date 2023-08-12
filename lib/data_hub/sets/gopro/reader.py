@@ -73,7 +73,8 @@ def get_vid_names(sroot):
         vid_names.append(str(vid_name.stem))
     vid_names = sorted(vid_names)
     nvids = len(vid_names)
-    vid_names_abbr = ["%02d" % vidx for vidx in range(nvids)]
+    # vid_names_abbr = ["%02d" % vidx for vidx in range(nvids)]
+    vid_names_abbr = vid_names
     return vid_names,vid_names_abbr
 
 def read_files(iroot,ds_split,nframes,stride,ext="png"):
