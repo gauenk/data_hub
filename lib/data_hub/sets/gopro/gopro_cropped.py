@@ -28,6 +28,11 @@ from .paths import BASE,FLOW_BASE
 from .reader_cropped import read_names,read_data
 from data_hub.read_flow import read_flows
 
+# -- optical flow --
+import torch as th
+from .paths import FLOW_BASE # why not other paths? I think we can do it when time
+from data_hub.read_flow import read_flows
+
 # -- augmentations init --
 import random
 from data_hub.augmentations import get_scale_augs,get_flippy_augs
@@ -36,7 +41,6 @@ from data_hub.read_flow import read_flows
 # from data_hub.augmentations import Augment_RGB_Flips
 # augment = Augment_RGB_Flips()
 # transforms_aug = [method for method in dir(augment) if callable(getattr(augment, method)) if not method.startswith('_')]
-
 
 class GoProCropped():
 
@@ -53,13 +57,12 @@ class GoProCropped():
         self.read_flows = params.read_flows
         self.seed = params.seed
 
-
         # -- manage cropping --
         isize = params.isize
         cropmode = params.cropmode
         isize_is_none = isize is None or isize == "none"
-        self.crop = isize
-        self.cropmode = cropmode if not(isize_is_none) else "none"
+        self.crop = params.isize
+        self.cropmode = params.cropmode if not(isize_is_none) else "none"
         self.region_temp = None
         if not(isize_is_none):
             self.region_temp = "%d_%d_%d" % (params.nframes,isize[0],isize[1])
@@ -112,8 +115,26 @@ class GoProCropped():
         group = self.groups[image_index]
 
         # -- load burst --
-        vid_name = self.names[image_index]
-        blur,sharp,frame_nums = read_data(vid_name,self.iroot,self.nframes)
+        subvid_name = self.names[image_index]
+        noisy,clean,frame_nums = read_data(subvid_name,self.iroot,self.nframes)
+
+        # # -- augmentations --
+        # if self.nscale_augs > 0:
+        #     aug_idx = random.randint(0,self.nscale_augs-1)
+        #     trans_fxn = self.scale_augs[aug_idx]
+        #     clean = trans_fxn(clean)
+        # if self.nflip_augs > 0:
+        #     aug_idx = random.randint(0,self.nflip_augs-1)
+        #     trans_fxn = self.flippy_augs[aug_idx]
+        #     clean = trans_fxn(clean)
+
+        # -- flow io --
+        vid_name = "_".join(subvid_name.split("+")[0].split("_")[:-2])
+        isize = list(clean.shape[-2:])
+        loc = [0,len(clean),0,0]
+        noise_info = edict({"ntype":"blur"})
+        fflow,bflow = read_flows(FLOW_BASE,self.read_flows,vid_name,
+                                 noise_info,self.seed,loc,isize)
 
         # -- flow io --
         size = list(clean.shape[-2:])
@@ -122,17 +143,24 @@ class GoProCropped():
                                  self.noise_info,self.seed,loc,size)
         # -- cropping --
         region = th.IntTensor([])
+        in_vids = [clean,noisy,fflow,bflow] if self.read_flows else [clean,noisy]
         use_region = "region" in self.cropmode or "coords" in self.cropmode
         if use_region:
-            region = crop_vid(sharp,self.cropmode,self.isize,self.region_temp)
+            region = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
         else:
-            vids = crop_vid([sharp,blur],self.cropmode,self.isize,self.region_temp)
-            sharp,blur = vids
+            in_vids = crop_vid(in_vids,self.cropmode,self.isize,self.region_temp)
+            clean = in_vids[0]
+            noisy = in_vids[1]
+            if self.read_flows:
+                fflow,bflow = in_vids[2],in_vids[3]
 
         # -- augmentations --
         apply_trans = transforms_aug[random.getrandbits(3)]
-        sharp = getattr(augment, apply_trans)(sharp)
-        blur = getattr(augment, apply_trans)(blur)
+        # clean = getattr(augment, apply_trans)(clean)
+        # noisy = getattr(augment, apply_trans)(noisy)
+        # fflow = getattr(augment, apply_trans)(fflow)
+        # bflow = getattr(augment, apply_trans)(bflow)
+
 
         # -- manage flow and output --
         index_th = th.IntTensor([image_index])
@@ -140,10 +168,6 @@ class GoProCropped():
         return {'noisy':blur,'clean':sharp,
                 'index':index_th,'fnums':frame_nums,'region':region,
                 'rng_state':rng_state}
-
-        # return {'blur':blur,'sharp':sharp,
-        #         'index':index_th,'fnums':frame_nums,'region':region,
-        #         'rng_state':rng_state}
 
 #
 # Loading the datasets in a project
@@ -177,7 +201,6 @@ def load(cfg):
               "scale_augs":None,
               "seed":123}
     # fields = {"bw":False,
-    #           "nsamples":-1,
     #           "nframes":10,
     #           "fstride":1,
     #           "isize":None,

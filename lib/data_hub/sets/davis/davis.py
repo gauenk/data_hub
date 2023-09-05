@@ -52,6 +52,7 @@ class DAVIS():
         self.index_skip = params.index_skip
         self.read_flows = params.read_flows
         self.seed = params.seed
+        self.sigma = params.sigma
         self.noise_info = noise_info
 
         # -- manage cropping --
@@ -129,7 +130,7 @@ class DAVIS():
         # -- get noise --
         # with self.fixRandNoise_1.set_state(index):
         noisy = self.noise_trans(clean)
-        sigma = th.FloatTensor([-1.])
+        sigma = th.FloatTensor([self.sigma])
         if hasattr(self.noise_trans,"sigma"):
             sigma = getattr(self.noise_trans,"sigma")
             sigma = th.FloatTensor([sigma])
@@ -172,7 +173,8 @@ def load(cfg):
               "cropmode":"center",
               "num_workers":2,
               "read_flows":False,
-              "seed":123}
+              "seed":123,
+              "sigma":-1}
     p = parse_cfg(cfg,modes,fields)
 
     # -- setup paths --

@@ -73,7 +73,8 @@ def get_vid_names(sroot):
         vid_names.append(str(vid_name.stem))
     vid_names = sorted(vid_names)
     nvids = len(vid_names)
-    vid_names_abbr = ["%02d" % vidx for vidx in range(nvids)]
+    # vid_names_abbr = ["%02d" % vidx for vidx in range(nvids)]
+    vid_names_abbr = vid_names
     return vid_names,vid_names_abbr
 
 def read_files(iroot,ds_split,nframes,stride,ext="png"):
@@ -134,7 +135,7 @@ def read_files(iroot,ds_split,nframes,stride,ext="png"):
         for group in range(n_subvids):
             start_t = group * stride
             if n_subvids == 1: vid_id = vid_name_abbr
-            else: vid_id = "%s_%d" % (vid_name_abbr,start_t)
+            else: vid_id = "%s:%d" % (vid_name_abbr,start_t)
             end_t = start_t + nframes_vid
             paths_t = [vid_paths[bnd(t,total_nframes)] for t in range(start_t,end_t)]
             files['images'][vid_id] = paths_t
