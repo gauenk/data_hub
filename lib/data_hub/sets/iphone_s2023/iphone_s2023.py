@@ -123,13 +123,17 @@ class IPhoneSpring2023():
         # with self.random_once.set_state(index):
         # with self.fixRandNoise_1.set_state(index):
         noisy = self.noise_trans(clean)
+        sigma = th.FloatTensor([-1.])
+        if hasattr(self.noise_trans,"sigma"):
+            sigma = getattr(self.noise_trans,"sigma")
+            sigma = th.FloatTensor([sigma])
 
         # -- image index in expanded dataset [with crops] --
         index_th = th.IntTensor([image_index])
 
         return {'noisy':noisy,'clean':clean,'index':index_th,
                 'fnums':frame_nums,'region':region,'rng_state':rng_state,
-                'fflow':fflow,'bflow':bflow}
+                'fflow':fflow,'bflow':bflow,"sigma":sigma}
 
 #
 # Loading the datasets in a project
@@ -173,7 +177,7 @@ def load(cfg):
     sroot = IMAGE_SETS
 
     # -- create objcs --
-    iphone_type = cfg.iphone_type # required
+    iphone_type = optional(cfg,"iphone_type","still")
     data = edict()
     data.tr = IPhoneSpring2023(iroot,sroot,iphone_type,noise_info,p.tr)
     data.val = IPhoneSpring2023(iroot,sroot,"all",noise_info,p.val)
