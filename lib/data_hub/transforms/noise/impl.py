@@ -202,12 +202,13 @@ class AddGaussianNoiseSet(object):
 
 class AddMultiScaleGaussianNoise(object):
 
-    def __init__(self, sigma_min, sigma_max):
+    def __init__(self, sigma_min, sigma_max, return_sigma=False):
         self.sigma_min = torch.tensor([1.*sigma_min])
         self.sigma_max = torch.tensor([1.*sigma_max])
         Uniform = torch.distributions.uniform.Uniform
         self.unif = Uniform(self.sigma_min,self.sigma_max)
         self.sigma = -1
+        self.return_sigma = return_sigma
 
     def __call__(self, tensor, sigma=None):
 
@@ -224,7 +225,10 @@ class AddMultiScaleGaussianNoise(object):
         t,_,h,w = tensor.shape
         pic = torch.cat([pic, noise_level.expand(t,1,h,w)], 1)
 
-        return pic
+        if self.return_sigma:
+            return pic,sigma
+        else:
+            return pic
 
     def __repr__(self):
         smin = self.sigma_min.item()

@@ -57,7 +57,11 @@ def read_flow_mmap(FLOW_BASE,vid_name,noise_info,seed):
 def read_flow_base(noise_info,seed):
     ntype = noise_info.ntype
     if ntype == "g":
-        return "g-%d_seed-%d" % (noise_info.sigma,seed)
+        sigma = noise_info.sigma
+        while not(sigma in [15,30,50]):
+            sigma = sigma + 5
+            if sigma > 50: break
+        return "g-%d_seed-%d" % (sigma,seed)
     elif ntype == "msg":
         sigma = npr.choice([15,30,50],size=1).item()
         return "g-%d_seed-%d" % (sigma,seed)

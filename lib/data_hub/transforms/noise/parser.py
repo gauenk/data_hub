@@ -134,7 +134,8 @@ def get_msg_noise(params):
     """
     sigma_min = params['sigma_min']
     sigma_max = params['sigma_max']
-    gaussian_msg = AddMultiScaleGaussianNoise(sigma_min,sigma_max)
+    return_sigma = optional(params,'return_sigma',False)
+    gaussian_msg = AddMultiScaleGaussianNoise(sigma_min,sigma_max,return_sigma)
     return gaussian_msg
 
 def get_submillilux_noise(params):
