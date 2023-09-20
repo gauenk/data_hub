@@ -63,6 +63,7 @@ class DAVISCropped():
             self.region_temp = "%d_%d_%d" % (params.nframes,isize[0],isize[1])
 
         # -- create transforms --
+        noise_info.return_sigma = True
         self.noise_trans = get_noise_transform(noise_info,noise_only=True)
 
         # -- load paths --
@@ -139,10 +140,13 @@ class DAVISCropped():
         # -- get noise --
         # with self.fixRandNoise_1.set_state(index):
         noisy = self.noise_trans(clean)
-        sigma = th.FloatTensor([-1.])
-        if hasattr(self.noise_trans,"sigma"):
-            sigma = getattr(self.noise_trans,"sigma")
-            sigma = th.FloatTensor([sigma])
+        sigma = -1.
+        if isinstance(noisy,tuple): noisy,sigma = noisy
+        sigma = th.FloatTensor([sigma])
+        # print(noisy.shape)
+        # if hasattr(self.noise_trans,"sigma"):
+        #     sigma = getattr(self.noise_trans,"sigma")
+        #     sigma = th.FloatTensor([sigma])
 
         # -- manage flow and output --
         index_th = th.IntTensor([image_index])
