@@ -9,6 +9,7 @@ from . import sidd
 from . import davis
 from . import gopro
 from . import iphone_s2023
+from . import iphone_sum2023
 
 # -- video + segmentation --
 from . import cityscapes
@@ -23,6 +24,7 @@ from . import bsd68
 from . import div2k
 from . import urban100
 from . import set12
+from . import vimeo90k
 
 # -- segmentation --
 from . import coco
@@ -36,6 +38,7 @@ def load(cfg):
                    "toy":toy,
                    "iphone":iphone,
                    "iphone_s2023":iphone_s2023,
+                   "iphone_sum2023":iphone_sum2023,
                    "set8":set8,
                    "sid":sid,
                    "coco":coco.coco,
@@ -61,6 +64,7 @@ def load(cfg):
                    "davis_cropped":davis.davis_cropped,
                    "gopro":gopro.gopro,
                    "gopro_cropped":gopro.gopro_cropped,
+                   "vimeo90k":vimeo90k,
                    "sird":sird}
     dnames = list(set_loaders.keys())
     if not(dname in dnames):

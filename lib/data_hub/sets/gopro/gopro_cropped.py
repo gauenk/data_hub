@@ -24,8 +24,9 @@ from data_hub.cropping import crop_vid
 from data_hub.opt_parsing import parse_cfg
 
 # -- local imports --
-from .paths import BASE
+from .paths import BASE,FLOW_BASE
 from .reader_cropped import read_names,read_data
+from data_hub.read_flow import read_flows
 
 # -- optical flow --
 import torch as th
@@ -34,17 +35,16 @@ from data_hub.read_flow import read_flows
 
 # -- augmentations init --
 import random
-from data_hub.augmentations import Augment_RGB_Flips
-augment = Augment_RGB_Flips()
-transforms_aug = [method for method in dir(augment) if callable(getattr(augment, method)) if not method.startswith('_')]
-
+from data_hub.augmentations import get_scale_augs,get_flippy_augs
+from data_hub.read_flow import read_flows
+# import random
+# from data_hub.augmentations import Augment_RGB_Flips
+# augment = Augment_RGB_Flips()
+# transforms_aug = [method for method in dir(augment) if callable(getattr(augment, method)) if not method.startswith('_')]
 
 class GoProCropped():
 
     def __init__(self,iroot,split,params):
-                 # nsamples=0,nframes=0,fstride=1,isize=None,
-                 # bw=False,cropmode=None,rand_order=False,
-                 # index_skip=1):
 
         # -- set init params --
         self.iroot = iroot
@@ -57,20 +57,32 @@ class GoProCropped():
         self.read_flows = params.read_flows
         self.seed = params.seed
 
+        # -- manage cropping --
+        isize = params.isize
+        cropmode = params.cropmode
+        isize_is_none = isize is None or isize == "none"
+        self.crop = params.isize
+        self.cropmode = params.cropmode if not(isize_is_none) else "none"
+        self.region_temp = None
+        if not(isize_is_none):
+            self.region_temp = "%d_%d_%d" % (params.nframes,isize[0],isize[1])
+
+        # # -- set init params --
+        # self.iroot = iroot
+        # self.split = split
         # self.nframes = nframes
         # self.isize = isize
         # self.rand_order = rand_order
         # self.index_skip = index_skip
         # assert self.nframes <= 10,"Must be <= 10 for this dataset."
 
-        # -- manage cropping --
-        isize,nframes = params.isize,params.nframes
-        isize_is_none = isize is None or isize == "none"
-        self.crop = params.isize
-        self.cropmode = params.cropmode if not(isize_is_none) else "none"
-        self.region_temp = None
-        if not(isize_is_none):
-            self.region_temp = "%d_%d_%d" % (nframes,isize[0],isize[1])
+        # # -- manage cropping --
+        # isize_is_none = isize is None or isize == "none"
+        # self.crop = isize
+        # self.cropmode = cropmode if not(isize_is_none) else "none"
+        # self.region_temp = None
+        # if not(isize_is_none):
+        #     self.region_temp = "%d_%d_%d" % (nframes,isize[0],isize[1])
 
         # -- load paths --
         self.names = read_names(iroot,self.nframes,ext="jpg")
@@ -124,6 +136,11 @@ class GoProCropped():
         fflow,bflow = read_flows(FLOW_BASE,self.read_flows,vid_name,
                                  noise_info,self.seed,loc,isize)
 
+        # -- flow io --
+        size = list(clean.shape[-2:])
+        vid_name = "_".join(vid_name.split("+")[0].split("_")[:-2])
+        fflow,bflow = read_flows(FLOW_BASE,self.read_flows,vid_name,
+                                 self.noise_info,self.seed,loc,size)
         # -- cropping --
         region = th.IntTensor([])
         in_vids = [clean,noisy,fflow,bflow] if self.read_flows else [clean,noisy]
@@ -148,15 +165,9 @@ class GoProCropped():
         # -- manage flow and output --
         index_th = th.IntTensor([image_index])
 
-        return {'noisy':noisy,'clean':clean,'index':index_th,
-                'fnums':frame_nums,'region':region,'rng_state':rng_state,
-                'fflow':fflow,'bflow':bflow}
-        # return {'noisy':blur,'clean':sharp,
-        #         'index':index_th,'fnums':frame_nums,'region':region,
-        #         'rng_state':rng_state}
-        # return {'blur':blur,'sharp':sharp,
-        #         'index':index_th,'fnums':frame_nums,'region':region,
-        #         'rng_state':rng_state}
+        return {'noisy':blur,'clean':sharp,
+                'index':index_th,'fnums':frame_nums,'region':region,
+                'rng_state':rng_state}
 
 #
 # Loading the datasets in a project
@@ -183,9 +194,11 @@ def load(cfg):
               "bw":False,
               "index_skip":1,
               "rand_order":False,
-              "cropmode":"center",
-              "num_workers":2,
+              "cropmode":"rand",
               "read_flows":False,
+              "num_workers":2,
+              "flippy_augs":None,
+              "scale_augs":None,
               "seed":123}
     # fields = {"bw":False,
     #           "nframes":10,
@@ -204,20 +217,14 @@ def load(cfg):
 
     # -- create objcs --
     data = edict()
-    data.tr = GoProCropped(iroot,"train",p.tr)# p.nsamples.tr,p.nframes.tr,
-                           # p.fstride.tr,p.isize.tr,p.bw.tr,
-                           # p.cropmode.tr,p.rand_order.tr,p.index_skip.tr)
-    data.val = GoProCropped(iroot,"train",p.val)## p.nsamples.val,p.nframes.val,
-                            # p.fstride.val,p.isize.val,p.bw.val,
-                            # p.cropmode.tr,p.rand_order.val,p.index_skip.val)
-    data.te = GoProCropped(iroot,"train",p.te)#p.nsamples.val,p.nframes.val,
-                           # p.fstride.val,p.isize.val,p.bw.val,
-                           # p.cropmode.tr,p.rand_order.val,p.index_skip.val)
+    tr_set = optional(cfg,"tr_set","train")
+    data.tr = GoProCropped(iroot,tr_set,p.tr)
+    data.val = GoProCropped(iroot,"test",p.val)
+    data.te = GoProCropped(iroot,"test",p.te)
 
-    # -- create loaders --
+    # -- loaders --
     batch_size = edict({key:val['batch_size'] for key,val in p.items()})
     loader = get_loaders(cfg,data,batch_size)
-
 
     return data,loader
 

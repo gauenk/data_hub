@@ -1,5 +1,5 @@
 """
-IPhoneSpring2023 dataset
+Vimeo90K dataset
 
 """
 
@@ -9,8 +9,6 @@ import numpy as np
 from pathlib import Path
 from einops import rearrange,repeat
 from easydict import EasyDict as edict
-import copy
-dcopy = copy.deepcopy
 
 # -- pytorch imports --
 import torch as th
@@ -22,26 +20,36 @@ from torchvision.transforms.functional import center_crop
 from data_hub.common import get_loaders,optional,get_isize
 from data_hub.transforms import get_noise_transform,noise_from_cfg
 from data_hub.reproduce import RandomOnce,get_random_state,enumerate_indices
-from data_hub.opt_parsing import parse_cfg
-# from data_hub.cropping import apply_sobel_filter,sample_sobel_region,sample_rand_region,get_center_region
 from data_hub.cropping import crop_vid
+from data_hub.opt_parsing import parse_cfg
+# apply_sobel_filter,sample_sobel_region,sample_rand_region
+
+# -- optical flow --
+import torch as th
+from .paths import FLOW_BASE # why not other paths? I think we can do it when time
 from data_hub.read_flow import read_flows
 
 # -- local imports --
-from .paths import IMAGE_PATH,IMAGE_SETS,FLOW_BASE
+from .paths import IMAGE_PATH,IMAGE_SETS,LR4_PATH
 from .reader import read_files,read_video
 
-class IPhoneSpring2023():
+class Vimeo90K():
 
-    def __init__(self,iroot,sroot,split,noise_info,params):
+    def __init__(self,iroot,nroot,sroot,split,noise_info,params):
+                 # nsamples=0,nframes=0,fstride=1,isize=None,
+                 # bw=False,cropmode="coords",rand_order=False,
+                 # index_skip=1):
 
         # -- set init params --
         self.iroot = iroot
+        self.nroot = nroot
         self.sroot = sroot
         self.split = split
         self.nframes = params.nframes
         self.isize = params.isize
         self.bw = params.bw
+        self.rand_order = params.rand_order
+        self.index_skip = params.index_skip
         self.read_flows = params.read_flows
         self.seed = params.seed
         self.noise_info = noise_info
@@ -51,9 +59,8 @@ class IPhoneSpring2023():
         isize_is_none = isize is None or isize == "none"
         self.crop = isize
         self.cropmode = params.cropmode if not(isize_is_none) else "none"
-        self.rand_crop,self.region_temp = None,None
+        self.region_temp = None
         if not(isize_is_none):
-            self.rand_crop = RandomCrop(isize)
             self.region_temp = "%d_%d_%d" % (params.nframes,isize[0],isize[1])
 
         # -- create transforms --
@@ -61,16 +68,21 @@ class IPhoneSpring2023():
 
         # -- load paths --
         self.paths = read_files(iroot,sroot,split,params.nframes,
-                                params.fstride,params.video_seq_max)
-        self.groups = sorted(list(self.paths['images'].keys()))
+                                params.fstride,ext="jpg")
+        order = np.argsort(self.paths['images'])
+        self.paths['images'] = self.paths['images'][order]
+        self.paths['fnums'] = self.paths['fnums'][order]
+        self.groups = self.paths['images']
 
         # -- limit num of samples --
-        self.indices = enumerate_indices(len(self.paths['images']),params.nsamples)
+        self.indices = enumerate_indices(len(self.paths['images']),params.nsamples,
+                                         params.rand_order,params.index_skip)
         self.nsamples = len(self.indices)
+        # print("self.nsamples: ",self.nsamples)
 
         # -- repro --
-        self.noise_once = params.noise_once
-        self.random_once = RandomOnce(self.noise_once,self.nsamples)
+        self.noise_once = optional(noise_info,"sim_once",False)
+        # self.fixRandNoise_1 = RandomOnce(self.noise_once,self.nsamples)
 
     def __len__(self):
         return self.nsamples
@@ -89,59 +101,50 @@ class IPhoneSpring2023():
 
         # -- indices --
         image_index = self.indices[index]
-        group = self.groups[image_index]
+        vid_id = self.paths['images'][image_index]
+        frame_nums = th.IntTensor(self.paths['fnums'][image_index])
 
         # -- load burst --
-        vid_files = self.paths['images'][group]
-        clean = read_video(vid_files,self.bw)
+        vid_name = vid_id.split(":")[0]
+        clean = read_video(vid_name,frame_nums,self.iroot,self.bw)
+        noisy = read_video(vid_name,frame_nums,self.nroot,self.bw)
         clean = th.from_numpy(clean)
-
-        # -- meta info --
-        frame_nums = self.paths['fnums'][group]
-        frame_nums = th.IntTensor(frame_nums)
+        noisy = th.from_numpy(noisy)
+        # print(clean.shape,noisy.shape)
 
         # -- flow io --
-        vid_name = group.split(":")[0]
         isize = list(clean.shape[-2:])
         loc = [0,len(clean),0,0]
-        fflow,bflow = read_flows(FLOW_BASE,self.read_flows,vid_name,
+        fflow,bflow = read_flows(FLOW_BASE,self.read_flows,vid_name.replace("-","/"),
                                  self.noise_info,self.seed,loc,isize)
 
         # -- cropping --
+        # NO CROPPING ALLOWED.
         region = th.IntTensor([])
-        in_vids = [clean,fflow,bflow] if self.read_flows else [clean]
-        use_region = "region" in self.cropmode or "coords" in self.cropmode
-        if use_region:
-            region = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
-        else:
-            in_vids = crop_vid(in_vids,self.cropmode,self.isize,self.region_temp)
-            clean = in_vids[0]
-            if self.read_flows:
-                fflow,bflow = in_vids[1],in_vids[2]
+        # in_vids = [clean,noisy,fflow,bflow] if self.read_flows else [clean,noisy]
+        # use_region = "region" in self.cropmode or "coords" in self.cropmode
+        # if use_region:
+        #     region = crop_vid(clean,self.cropmode,self.isize,self.region_temp)
+        # else:
+        #     in_vids = crop_vid(in_vids,self.cropmode,self.isize,self.region_temp)
+        #     clean = in_vids[0]
+        #     noisy = in_vids[1]
+        #     if self.read_flows:
+        #         fflow,bflow = in_vids[2],in_vids[3]
 
-        # -- get noise --
-        # with self.random_once.set_state(index):
-        # with self.fixRandNoise_1.set_state(index):
-        noisy = self.noise_trans(clean)
-        sigma = th.FloatTensor([-1.])
-        if hasattr(self.noise_trans,"sigma"):
-            sigma = getattr(self.noise_trans,"sigma")
-            sigma = th.FloatTensor([sigma])
-
-        # -- image index in expanded dataset [with crops] --
+        # -- manage flow and output --
         index_th = th.IntTensor([image_index])
 
         return {'noisy':noisy,'clean':clean,'index':index_th,
                 'fnums':frame_nums,'region':region,'rng_state':rng_state,
-                'fflow':fflow,'bflow':bflow,"sigma":sigma}
+                'fflow':fflow,'bflow':bflow}
 
 #
 # Loading the datasets in a project
 #
 
-def get_iphone_s2023_dataset(cfg):
+def get_vimeo90k_dataset(cfg):
     return load(cfg)
-
 
 def load(cfg):
 
@@ -150,7 +153,6 @@ def load(cfg):
     #
 
     # -- noise and dyanmics --
-    cfg = dcopy(cfg)
     noise_info = noise_from_cfg(cfg)
 
     # -- field names and defaults --
@@ -165,25 +167,25 @@ def load(cfg):
               "index_skip":1,
               "rand_order":False,
               "cropmode":"center",
-              "noise_once":False,
               "num_workers":2,
               "read_flows":False,
-              "seed":123,
-              "video_seq_max":0}
+              "seed":123}
     p = parse_cfg(cfg,modes,fields)
 
     # -- setup paths --
     iroot = IMAGE_PATH
+    nroot = LR4_PATH
     sroot = IMAGE_SETS
 
     # -- create objcs --
-    iphone_type = optional(cfg,"iphone_type","still")
     data = edict()
-    data.tr = IPhoneSpring2023(iroot,sroot,iphone_type,noise_info,p.tr)
-    data.val = IPhoneSpring2023(iroot,sroot,"all",noise_info,p.val)
-    data.te = IPhoneSpring2023(iroot,sroot,"all",noise_info,p.te)
+    tr_set = optional(cfg,"tr_set","train") # or "train-val"
+    tr_set = "train" if tr_set == "tr" else tr_set
+    data.tr = Vimeo90K(iroot,nroot,sroot,tr_set,noise_info,p.tr)
+    data.val = Vimeo90K(iroot,nroot,sroot,"train",noise_info,p.val)
+    data.te = Vimeo90K(iroot,nroot,sroot,"test",noise_info,p.te)
 
-    # -- create loader --
+    # -- create loaders --
     batch_size = edict({key:val['batch_size'] for key,val in p.items()})
     loader = get_loaders(cfg,data,batch_size)
 

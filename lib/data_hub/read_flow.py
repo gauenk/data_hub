@@ -61,6 +61,9 @@ def read_flow_base(noise_info,seed):
         while not(sigma in [15,30,50]):
             sigma = sigma + 5
             if sigma > 50: break
+        # if noise_info.sigma > 50: sigma = 50
+        # else: sigma = noise_info.sigma
+        # sigma = noise_info.sigma
         return "g-%d_seed-%d" % (sigma,seed)
     elif ntype == "msg":
         sigma = npr.choice([15,30,50],size=1).item()
