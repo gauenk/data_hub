@@ -24,6 +24,7 @@ from . import bsd68
 from . import div2k
 from . import urban100
 from . import set12
+from . import vimeo90k
 
 # -- segmentation --
 from . import coco
@@ -63,6 +64,7 @@ def load(cfg):
                    "davis_cropped":davis.davis_cropped,
                    "gopro":gopro.gopro,
                    "gopro_cropped":gopro.gopro_cropped,
+                   "vimeo90k":vimeo90k,
                    "sird":sird}
     dnames = list(set_loaders.keys())
     if not(dname in dnames):
