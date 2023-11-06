@@ -33,11 +33,12 @@ from .reader import read_files,read_video
 
 class IPhoneSpring2023():
 
-    def __init__(self,iroot,sroot,split,noise_info,params):
+    def __init__(self,iroot,sroot,noise_info,params):
 
         # -- set init params --
         self.iroot = iroot
         self.sroot = sroot
+        split = params.iphone_type
         self.split = split
         self.nframes = params.nframes
         self.isize = params.isize
@@ -169,7 +170,8 @@ def load(cfg):
               "num_workers":2,
               "read_flows":False,
               "seed":123,
-              "video_seq_max":0}
+              "video_seq_max":0,
+              "iphone_type":"all"}
     p = parse_cfg(cfg,modes,fields)
 
     # -- setup paths --
@@ -177,11 +179,10 @@ def load(cfg):
     sroot = IMAGE_SETS
 
     # -- create objcs --
-    iphone_type = optional(cfg,"iphone_type","still")
     data = edict()
-    data.tr = IPhoneSpring2023(iroot,sroot,iphone_type,noise_info,p.tr)
-    data.val = IPhoneSpring2023(iroot,sroot,"all",noise_info,p.val)
-    data.te = IPhoneSpring2023(iroot,sroot,"all",noise_info,p.te)
+    data.tr = IPhoneSpring2023(iroot,sroot,noise_info,p.tr)
+    data.val = IPhoneSpring2023(iroot,sroot,noise_info,p.val)
+    data.te = IPhoneSpring2023(iroot,sroot,noise_info,p.te)
 
     # -- create loader --
     batch_size = edict({key:val['batch_size'] for key,val in p.items()})

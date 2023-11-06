@@ -33,11 +33,12 @@ from .reader import read_files,read_video
 
 class IPhoneSummer2023():
 
-    def __init__(self,iroot,sroot,split,noise_info,params):
+    def __init__(self,iroot,sroot,noise_info,params):
 
         # -- set init params --
         self.iroot = iroot
         self.sroot = sroot
+        split = params.iphone_type
         self.split = split
         self.nframes = params.nframes
         self.isize = params.isize
@@ -46,6 +47,9 @@ class IPhoneSummer2023():
         self.seed = params.seed
         self.iscale = params.iscale
         self.noise_info = noise_info
+        self.repeat_center_frame = params.repeat_center_frame
+        # print("self.repeat_center_frame: ",self.repeat_center_frame)
+        # exit()
 
         # -- manage cropping --
         isize = params.isize
@@ -61,7 +65,8 @@ class IPhoneSummer2023():
         self.noise_trans = get_noise_transform(noise_info,noise_only=True)
 
         # -- load paths --
-        self.paths = read_files(iroot,sroot,split,params.nframes,
+        fn = split if params.set_fn is None else params.set_fn
+        self.paths = read_files(iroot,sroot,fn,params.nframes,
                                 params.fstride,params.video_seq_max)
         self.groups = sorted(list(self.paths['images'].keys()))
 
@@ -125,10 +130,20 @@ class IPhoneSummer2023():
             if self.read_flows:
                 fflow,bflow = in_vids[1],in_vids[2]
 
+        # -- optionally replace all frames with center frame --
+        if self.repeat_center_frame:
+            # print("clean.shape: ",clean.shape)
+            T = clean.shape[0]
+            clean = repeat(clean[[T//2]],'1 c h w -> t c h w',t=T)
+            fflow,bflow = th.zeros_like(fflow),th.zeros_like(bflow)
+
         # -- get noise --
         # with self.random_once.set_state(index):
         # with self.fixRandNoise_1.set_state(index):
         noisy = self.noise_trans(clean)
+        sigma = -1.
+        if isinstance(noisy,tuple): noisy,sigma = noisy
+        sigma = th.FloatTensor([sigma])
 
         # -- image index in expanded dataset [with crops] --
         index_th = th.IntTensor([image_index])
@@ -172,7 +187,10 @@ def load(cfg):
               "read_flows":False,
               "seed":123,
               "video_seq_max":0,
-              "iscale":1.}
+              "iscale":1.,
+              'repeat_center_frame':False,
+              "set_fn":None,
+              "iphone_type":"all"}
     p = parse_cfg(cfg,modes,fields)
 
     # -- setup paths --
@@ -180,11 +198,10 @@ def load(cfg):
     sroot = IMAGE_SETS
 
     # -- create objcs --
-    iphone_type = cfg.iphone_type # required
     data = edict()
-    data.tr = IPhoneSummer2023(iroot,sroot,iphone_type,noise_info,p.tr)
-    data.val = IPhoneSummer2023(iroot,sroot,"all",noise_info,p.val)
-    data.te = IPhoneSummer2023(iroot,sroot,"all",noise_info,p.te)
+    data.tr = IPhoneSummer2023(iroot,sroot,noise_info,p.tr)
+    data.val = IPhoneSummer2023(iroot,sroot,noise_info,p.val)
+    data.te = IPhoneSummer2023(iroot,sroot,noise_info,p.te)
 
     # -- create loader --
     batch_size = edict({key:val['batch_size'] for key,val in p.items()})

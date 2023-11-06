@@ -76,6 +76,7 @@ class DAVIS():
         self.indices = enumerate_indices(len(self.paths['images']),params.nsamples,
                                          params.rand_order,params.index_skip)
         self.nsamples = len(self.indices)
+        # print("self.nsamples: ",self.nsamples)
 
         # -- repro --
         self.noise_once = optional(noise_info,"sim_once",False)
@@ -186,7 +187,7 @@ def load(cfg):
     tr_set = optional(cfg,"tr_set","train") # or "train-val"
     data.tr = DAVIS(iroot,sroot,tr_set,noise_info,p.tr)
     data.val = DAVIS(iroot,sroot,"val",noise_info,p.val)
-    data.te = DAVIS(iroot,sroot,"test-dev",noise_info,p.val)
+    data.te = DAVIS(iroot,sroot,"test-dev",noise_info,p.te)
 
     # -- create loaders --
     batch_size = edict({key:val['batch_size'] for key,val in p.items()})
