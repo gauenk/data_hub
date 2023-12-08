@@ -3,7 +3,8 @@ import numpy as np
 from torchvision.transforms import functional as tvf
 
 def rescale_imgs(iscale,*vids):
-    if np.isclose(iscale,1): return vids
+    if iscale <= 0: return vids
+    elif np.isclose(iscale,1): return vids
     s_vids = []
     for vid in vids:
         if vid.ndim == 1:

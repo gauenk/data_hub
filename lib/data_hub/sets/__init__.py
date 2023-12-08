@@ -14,6 +14,7 @@ from . import iphone_sum2023
 # -- video + segmentation --
 from . import cityscapes
 from . import youtube_voc
+from . import bsd500
 
 # -- real: (noisy_1,...,noisy_N,clean_frame) sets --
 from . import submillilux
@@ -49,6 +50,7 @@ def load(cfg):
                    "submillilux_real":submillilux.real,
                    "submillilux_paired":submillilux.paired,
                    "bsd68":bsd68,
+                   "bsd500":bsd500,
                    "urban100":urban100,
                    "set12":set12,
                    "div2k":div2k,
@@ -62,6 +64,7 @@ def load(cfg):
                    "sidd_bench_full":sidd.bench_full,
                    "davis":davis,
                    "davis_cropped":davis.davis_cropped,
+                   "davis_anno":davis.davis_anno,
                    "gopro":gopro.gopro,
                    "gopro_cropped":gopro.gopro_cropped,
                    "vimeo90k":vimeo90k,

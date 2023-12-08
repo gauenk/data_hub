@@ -2,7 +2,6 @@
 import torch as th
 import numpy as np
 from PIL import Image
-from pathlib import Path
 from einops import rearrange,repeat
 from .paths import FLOW_BASE # why not other paths? I think we can do it when time
 
@@ -16,20 +15,6 @@ def read_video_in_dir(ipath,nframes,ext="png"):
         vid_t = rearrange(vid_t,'h w c -> c h w')
         vid.append(vid_t)
     vid = np.stack(vid)
-    return vid
-
-def read_annos(paths):
-    vid = []
-    for path_t in paths:
-        path_t = str(path_t).replace("JPEGImages","Annotations")
-        path_t = path_t.replace("jpg","png")
-        path_t = Path(path_t)
-        if not path_t.exists(): break
-        vid_t = Image.open(str(path_t))
-        vid_t = np.array(vid_t)[None,]
-        vid_t = vid_t.astype(np.float32)
-        vid.append(vid_t)
-    vid = np.stack(vid).astype(np.float32)
     return vid
 
 def read_video(paths,bw=False):

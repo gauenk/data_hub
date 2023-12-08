@@ -54,6 +54,7 @@ class DAVIS():
         self.seed = params.seed
         self.sigma = params.sigma
         self.noise_info = noise_info
+        self.chnl4 = params.chnl4
 
         # -- manage cropping --
         isize = params.isize
@@ -128,6 +129,13 @@ class DAVIS():
             if self.read_flows:
                 fflow,bflow = in_vids[1],in_vids[2]
 
+        # -- append 4th channel if necessary --
+        if not(self.chnl4 is None):
+            if self.chnl4 == "rgbg":
+                clean = th.cat([clean,clean[...,[1],:,:]],-3)
+            else:
+                raise ValueError(f"Uknown chnl4 [{chnl4}]")
+
         # -- get noise --
         # with self.fixRandNoise_1.set_state(index):
         noisy = self.noise_trans(clean)
@@ -175,7 +183,8 @@ def load(cfg):
               "num_workers":2,
               "read_flows":False,
               "seed":123,
-              "sigma":-1}
+              "sigma":-1,
+              "chnl4":None}
     p = parse_cfg(cfg,modes,fields)
 
     # -- setup paths --

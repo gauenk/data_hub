@@ -32,6 +32,7 @@ class SuperResolutionNoise:
         isize = [int(s/self.scale) for s in osize]
         smaller = tvF.resize(image,isize,antialias=False)
         noisy = tvF.resize(smaller,osize,antialias=False)
+        # print("sr: ",noisy.shape)
         return noisy
 
 class QIS:
