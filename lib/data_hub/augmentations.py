@@ -1,4 +1,7 @@
-import cv2
+try:
+    import cv2
+except:
+    pass
 import random
 import numpy as np
 import torch as th

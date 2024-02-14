@@ -1,5 +1,8 @@
 
-import cv2
+try:
+    import cv2
+except:
+    pass
 import numpy as np
 from PIL import Image
 from einops import rearrange,repeat

@@ -2,7 +2,10 @@ from glob import glob
 from tqdm import tqdm
 import numpy as np
 import os
-import cv2
+try:
+    import cv2
+except:
+    pass
 from joblib import Parallel, delayed
 import multiprocessing
 import argparse

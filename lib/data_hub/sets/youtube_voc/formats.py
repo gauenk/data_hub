@@ -1,10 +1,13 @@
 
-import os,cv2,tqdm
+import os,tqdm
 import numpy as np
 import torch as th
 from PIL import Image
 
-from detectron2.structures import BoxMode
+try:
+    from detectron2.structures import BoxMode
+except:
+    pass
 from .reader import read_annos
 
 import cache_io
@@ -106,6 +109,7 @@ def _files_to_dict(img_paths,anno_paths,labels,group_name,cats,to_polygons=False
 
             # -- to polygons --
             if to_polygons:
+                import cv2
                 contours = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
                                             cv2.CHAIN_APPROX_NONE)[-2]
                 polygons = [c.reshape(-1).tolist() for c in contours if len(c) >= 3]
