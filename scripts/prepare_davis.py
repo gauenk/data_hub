@@ -10,7 +10,7 @@ def main():
     base = davis_paths.BASE
 
     # -- verify directory --
-    Path(base).exists()
+    assert Path(base).exists()
 
     # -- cropped sets for training --
     davis.generate_cropped.run(base)
